@@ -36,7 +36,7 @@ def levenshtein_metric(model, textcleaner, ref_txt, inf, lang_id, fs=16000):
     """
     if ref_txt == "<not-available>":
         # Skip samples without reference transcripts
-        return {}
+        return dict(WER={}, CER={})
     if fs != TARGET_FS:
         inf = soxr.resample(inf, fs, TARGET_FS)
         fs = TARGET_FS
@@ -158,6 +158,7 @@ def main(args):
         beam_size=BEAMSIZE,
         predict_time=False,
     )
+    # print([a for a in model.s2t_model.token_list if "<" in a and ">" in a], flush=True)
     textcleaner = TextCleaner("whisper_basic")
     # textcleaner = TextCleaner("whisper_en")
     ret = []
