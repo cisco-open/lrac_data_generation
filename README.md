@@ -31,7 +31,6 @@ Official data preparation scripts for the [URGENT 2025 Challenge](https://urgent
   - Others
     - default simulated validation data: ~?? GB
 
-With minimum specs, expects the whole process to take YYY hours.
 
 ## Instructions
 
