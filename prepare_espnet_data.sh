@@ -254,6 +254,10 @@ if [ ! -e "${output_dir}/tmp/simulation_validation.done" ]; then
     awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="clean_path") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_validation/log/meta.tsv | sort -u -k1,1 > "${output_dir}"/validation/spk1.scp 
     awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="fs") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_validation/log/meta.tsv | sort -u -k1,1 > "${output_dir}"/validation/utt2fs
     awk '{print($1" 1ch_"$2"Hz")}' "${output_dir}"/validation/utt2fs > "${output_dir}"/validation/utt2category
+
+    python utils/get_utt2lang.py \
+        --meta_tsv simulation_validation/log/meta.tsv --outfile utt2lang
+    sort -u -k1,1 utt2lang > "${output_dir}"/validation/utt2lang && rm utt2lang
 fi
 touch "${output_dir}/tmp/simulation_validation.done"
 
