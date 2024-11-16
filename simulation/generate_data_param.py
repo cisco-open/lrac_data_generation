@@ -261,17 +261,24 @@ def main(args):
                     force_1ch=True,
                 )
                 count += 1
+
+                # limit the number of files in each directory to 5000
+                filedir = str(count // 5000)
+                (outdir / "noisy" / filedir).mkdir(parents=True, exist_ok=True)
+                (outdir / "clean" / filedir).mkdir(parents=True, exist_ok=True)
+
                 filename = f"fileid_{count}.{args.out_format}"
                 lst = [
                     f"fileid_{count}",
-                    str(outdir / "noisy" / filename),
+                    str(outdir / "noisy" / filedir / filename),
                     uid,
                     sid,
-                    str(outdir / "clean" / filename),
+                    str(outdir / "clean" / filedir / filename),
                     info["noise_uid"],
                 ]
                 if args.store_noise:
-                    lst.append(str(outdir / "noise" / filename))
+                    (outdir / "noise" / filedir).mkdir(parents=True, exist_ok=True)
+                    lst.append(str(outdir / "noise" / filedir / filename))
                 lst += [
                     str(info["snr"]),
                     info["rir_uid"],
@@ -304,7 +311,7 @@ def process_one_sample(
     # select a noise sample
     if use_wind_noise:
         noise_uid, _ = select_sample(
-            fs, wind_noise_dic, used_sample_dic=used_wind_noise_dic, reuse_sample=False
+            fs, wind_noise_dic, used_sample_dic=used_wind_noise_dic, reuse_sample=True
         )
 
         # wind-noise simulation config
