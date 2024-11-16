@@ -41,7 +41,6 @@ rir_scps:
 prob_reverberation: 0.5
 reuse_rir: false
 
-# https://github.com/microsoft/SIG-Challenge/blob/bf4525153b6ed998f19d9e79ff1fd00f55dec42b/ICASSP2024/demo_synthesizer/distorter.py#L95C14-L95C32
 augmentations:
   bandwidth_limitation:
     weight: 1.0
@@ -50,20 +49,6 @@ augmentations:
     weight: 1.0
     clipping_min_quantile: [0.0, 0.1]
     clipping_max_quantile: [0.9, 1.0]
-  # loudness_transition:
-  #   weight: 1.0
-  #   num_peaks: [1, 4]  # chosen from 1 to 3
-  #   duration: [0.5, 2.0]
-  #   peak_db: [5.0, 15.0]  # made negative with 50% chance
-  # nonflat_freq_res:
-  #   weight: 1.0
-  #   low_shelf_hz: [50, 700]
-  #   low_shelf_db: [-12.0, 12.0]
-  #   high_shelf_hz: [4500, 7500]
-  #   high_shelf_db: [-12.0, 12.0]
-  #   num_peaks: [0, 7] # chosen from 0 to 6
-  #   peak_hz: [600, 7400]
-  #   peak_db: [-6, 6]
   codec:
     weight: 1.0
     config:
@@ -73,8 +58,6 @@ augmentations:
       - format: ogg
         encoder: [vorbis, opus]
         qscale: [-1, 10]
-
-    # vbr_quality: [1.0, 5.0]
   packet_loss:
     weight: 1.0
     packet_duration_ms: 20

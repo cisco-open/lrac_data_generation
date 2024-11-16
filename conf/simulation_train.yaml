@@ -2,22 +2,48 @@ speech_scps:
 - data/tmp/dns5_clean_read_speech_resampled_filtered_train.scp
 - data/tmp/libritts_resampled_train.scp
 - data/tmp/vctk_train.scp
-- data/tmp/commonvoice_11.0_en_resampled_filtered_train.scp
 - data/tmp/wsj_train.scp
+- data/tmp/ears_train.scp
+- data/tmp/commonvoice_19.0_en_resampled_train_track1.scp
+- data/tmp/commonvoice_19.0_de_resampled_train_track1.scp
+- data/tmp/commonvoice_19.0_es_resampled_train_track1.scp
+- data/tmp/commonvoice_19.0_fr_resampled_train_track1.scp
+- data/tmp/commonvoice_19.0_zh-CN_resampled_train_track1.scp
+- data/tmp/mls_german_resampled_train_track1.scp
+- data/tmp/mls_spanish_resampled_train_track1.scp
+- data/tmp/mls_french_resampled_train_track1.scp
 
 speech_utt2spk:
 - data/tmp/dns5_clean_read_speech_resampled_filtered_train.utt2spk
 - data/tmp/libritts_resampled_train.utt2spk
 - data/tmp/vctk_train.utt2spk
-- data/tmp/commonvoice_11.0_en_resampled_filtered_train.utt2spk
 - data/tmp/wsj_train.utt2spk
+- data/tmp/ears_train.utt2spk
+- data/tmp/commonvoice_19.0_en_resampled_train_track1.utt2spk
+- data/tmp/commonvoice_19.0_de_resampled_train_track1.utt2spk
+- data/tmp/commonvoice_19.0_es_resampled_train_track1.utt2spk
+- data/tmp/commonvoice_19.0_fr_resampled_train_track1.utt2spk
+- data/tmp/commonvoice_19.0_zh-CN_resampled_train_track1.utt2spk
+- data/tmp/mls_german_resampled_train_track1.utt2spk
+- data/tmp/mls_spanish_resampled_train_track1.utt2spk
+- data/tmp/mls_french_resampled_train_track1.utt2spk
+
 
 speech_text:
 - data/tmp/dns5_clean_read_speech_resampled_filtered_train.text
 - data/tmp/libritts_resampled_train.text
 - data/tmp/vctk_train.text
-- data/tmp/commonvoice_11.0_en_resampled_filtered_train.text
 - data/tmp/wsj_train.text
+- data/tmp/ears_train.text
+- data/tmp/commonvoice_19.0_en_resampled_train_track1.text
+- data/tmp/commonvoice_19.0_de_resampled_train_track1.text
+- data/tmp/commonvoice_19.0_es_resampled_train_track1.text
+- data/tmp/commonvoice_19.0_fr_resampled_train_track1.text
+- data/tmp/commonvoice_19.0_zh-CN_resampled_train_track1.text
+- data/tmp/mls_german_resampled_train_track1.text
+- data/tmp/mls_spanish_resampled_train_track1.text
+- data/tmp/mls_french_resampled_train_track1.text
+
 
 log_dir: simulation_train/log
 output_dir: simulation_train
@@ -27,10 +53,26 @@ seed: 0
 noise_scps:
 - data/tmp/dns5_noise_resampled_train.scp
 - data/tmp/wham_noise_train.scp
+- data/tmp/fma_noise_resampled_train.scp
+- data/tmp/fsd50k_noise_resampled_train.scp
 snr_low_bound: -5.0
 snr_high_bound: 20.0
 reuse_noise: true
 store_noise: false
+
+wind_noise_scps:
+- data/tmp/wind_noise_train.scp
+prob_wind_noise: 0.05
+wind_noise_config:
+  threshold: [0.1, 0.3]
+  ratio: [1, 20]
+  attack: [5, 100]
+  release: [5, 100]
+  sc_gain: [0.8, 1.2]
+  clipping_threshold: [0.85, 1.0]
+  clipping_chance: 0.75
+wind_noise_snr_low_bound: -10.0
+wind_noise_snr_high_bound: 15.0
 
 rir_scps:
 - data/tmp/dns5_rirs.scp
@@ -38,12 +80,31 @@ prob_reverberation: 0.5
 reuse_rir: true
 
 augmentations:
-- none
-- bandwidth_limitation
-- clipping
-weight_augmentations:
-- 1.0
-- 1.0
-- 1.0
-clipping_min_quantile: [0.0, 0.1]
-clipping_max_quantile: [0.9, 1.0]
+  bandwidth_limitation:
+    weight: 1.0
+    resample_methods: random
+  clipping:
+    weight: 1.0
+    clipping_min_quantile: [0.0, 0.1]
+    clipping_max_quantile: [0.9, 1.0]
+  codec:
+    weight: 1.0
+    config:
+      - format: mp3
+        encoder: null
+        qscale: [1, 10]
+      - format: ogg
+        encoder: [vorbis, opus]
+        qscale: [-1, 10]
+  packet_loss:
+    weight: 1.0
+    packet_duration_ms: 20
+    max_continuous_packet_loss: 10
+    packet_loss_rate: [0.05, 0.25]
+
+# key: number of aug. value: probability
+num_augmentations:
+  0: 0.25
+  1: 0.40
+  2: 0.20
+  3: 0.15
