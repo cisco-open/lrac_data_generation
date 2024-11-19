@@ -59,6 +59,7 @@ def estoi_metric(ref, inf, fs=16000):
     Returns:
         estoi (float): ESTOI value between [0, 1]
     """
+    np.random.seed(0) # make estoi deterministic
     return stoi(ref, inf, fs_sig=fs, extended=True)
 
 
