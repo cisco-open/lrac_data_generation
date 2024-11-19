@@ -6,6 +6,8 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
 ## Updates
 
+❗️❗️[**2024-11-19**] We modified [ESTOI evaluation](https://github.com/urgent-challenge/urgent2025_challenge/blob/main/evaluation_metrics/calculate_intrusive_se_metrics.py) to be deterministic (it has [randomness](https://github.com/mpariente/pystoi/blob/74872b000753a7a42ff51aa0868af8c82c7f9053/pystoi/utils.py#L178)).
+
 ❗️❗️[**2024-11-18**] We have added some missing files which are necessary for data preparation in Track 2, [commonvoice_19.0_es_train_track2.json.gz](https://github.com/urgent-challenge/urgent2025_challenge/blob/main/datafiles/commonvoice/commonvoice_19.0_es_train_track2.json.gz). If you cloned the repogitory before Nov. 18, please pull the latest commit.
 
 ❗️❗️[**2024-11-16**] We have modified some data preparation and evaluation scripts. If you cloned the repogitory before Nov. 16, please pull the latest commit.
