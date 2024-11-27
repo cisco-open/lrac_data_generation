@@ -20,7 +20,7 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
 - The default generated `data/speech_train` subset is only intended for **dynamic mixing (on-the-fly simulation)** in the ESPnet framework. It has the same content in `spk1.scp` (clean reference speech) and `wav.scp` (noisy speech) files to facilitate on-the-fly simulation of different distortions.
 
-- The validation set made by this script is different from the official validation set used in the leaderboard, although the data source and the type of distortions do not change. **The official one will be provided on when the leaderboard opens (Nov. 25)**. Note that we only provide the noisy data but not the ground truth of the official validation set until the leaderboard swithces to test phase (Dec. 23) to avoid cheating in the leaderboard.
+- The validation set made by this script is different from the official validation set used in the leaderboard, although the data source and the type of distortions do not change. **The official one is [here](https://drive.google.com/file/d/1Ip-C5tUNGCssT8KAjHUUoh99jkzRH6nm/view)**. Note that we only provide the noisy data but not the ground truth of the official validation set until the leaderboard swithces to test phase (Dec. 23) to avoid cheating in the leaderboard.
 
 - The unofficial validation set made by this script can be used to select the best checkpoint. Participants can freely change the [configuration to generate the unofficial validation set](https://github.com/urgent-challenge/urgent2025_challenge/blob/main/conf/simulation_validation.yaml).
 <!-- 
