@@ -6,6 +6,8 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
 ## Updates
 
+❗️❗️[**2024-11-27**] We added trouble shooting for some known issues at the tail of this README. Please check it first if you encounter some problems.
+
 ❗️❗️[**2024-11-19**] We modified [ESTOI evaluation](https://github.com/urgent-challenge/urgent2025_challenge/blob/main/evaluation_metrics/calculate_intrusive_se_metrics.py) to be deterministic (it has [randomness](https://github.com/mpariente/pystoi/blob/74872b000753a7a42ff51aa0868af8c82c7f9053/pystoi/utils.py#L178)).
 
 ❗️❗️[**2024-11-18**] We have added some missing files which are necessary for data preparation in Track 2, [commonvoice_19.0_es_train_track2.json.gz](https://github.com/urgent-challenge/urgent2025_challenge/blob/main/datafiles/commonvoice/commonvoice_19.0_es_train_track2.json.gz). If you cloned the repogitory before Nov. 18, please pull the latest commit.
@@ -13,6 +15,8 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 ❗️❗️[**2024-11-16**] We have modified some data preparation and evaluation scripts. If you cloned the repogitory before Nov. 16, please pull the latest commit.
 
 ## Notes
+
+- Please check the trouble shooting at the tail of this README first if you encounter some problems. Please raise an issue when you find any other problems.
 
 - The default generated `data/speech_train` subset is only intended for **dynamic mixing (on-the-fly simulation)** in the ESPnet framework. It has the same content in `spk1.scp` (clean reference speech) and `wav.scp` (noisy speech) files to facilitate on-the-fly simulation of different distortions.
 
@@ -161,3 +165,49 @@ The script can also resample the whole dataset to a unified sampling frequency
 with `--sampling-rate <freq_hz>`. This option will not include samples with
 sampling frequency lower than the prescribed frequency.
 -->
+
+
+## Trouble Shooting
+
+### Error when unpacking MLS .tar.gz files
+
+Sometimes, an error like the following happens when unpacking .tar.gz files in `utils/prepare_MLS_speech.sh`.
+
+If you encounter this error, please just retry the script after deleting `./mls_segments/download_mls_${lang}_${split}_${track}.done` for the failed language, split (train or dev), and track (track1 or track2).
+
+In the following example, one needs to remove `./mls_segments/download_mls_spanish_train_track1.done` before rerunning the script again.
+
+```sh
+=== Preparing MLS data for track1 ===                                                                                                                                                                                 
+=== Preparing MLS german train data ===                                                                                                                                                                               
+[MLS-german-train_track1] downloading data                                                                                                                                                                            
+=== Preparing MLS german dev data ===                                                                                                                                                                                 
+[MLS-german-dev] downloading data                                                                                                                                                                                     
+=== Preparing MLS french train data ===                                                                                                                                                                               
+[MLS-french-train_track1] downloading data                                                                                                                                                                            
+=== Preparing MLS french dev data ===                                                                                                                                                                                 
+[MLS-french-dev] downloading data
+=== Preparing MLS spanish train data ===
+[MLS-spanish-train_track1] downloading data
+tar: ./3946/3579: Cannot mkdir: No such file or directory
+tar: ./3946/8075: Cannot mkdir: No such file or directory
+tar: ./9972/10719: Cannot mkdir: No such file or directory
+tar: Exiting with failure status due to previous errors
+tar: Exiting with failure status due to previous errors
+tar: Exiting with failure status due to previous errors
+```
+
+
+### Warnings when processing FMA data
+
+When preparing FMA data, following warnings appear but you can just ignore them.
+
+```sh
+[FMA noise] split training and validation data
+[FMA noise] resampling to estimated audio bandwidth
+  0%|                                                                                          | 0/19902 [00:00<?, ?it/s][src/libmpg123/layer3.c:INT123_do_layer3():1801] error: dequantization failed!
+[src/libmpg123/layer3.c:INT123_do_layer3():1771] error: part2_3_length (3264) too large for available bit count (3224)
+[src/libmpg123/layer3.c:INT123_do_layer3():1841] error: dequantization failed!
+[src/libmpg123/layer3.c:INT123_do_layer3():1801] error: dequantization failed!
+...
+```
