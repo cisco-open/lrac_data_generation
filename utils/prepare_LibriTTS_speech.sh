@@ -36,7 +36,7 @@ mkdir -p tmp
 
 BW_EST_FILE=tmp/libritts_train.json
 BW_EST_FILE_JSON_GZ="datafiles/libritts/libritts_train.json.gz"
-if [ -f ${BW_EST_FILE} ]; then
+if [ -f ${BW_EST_FILE_JSON_GZ} ]; then
     gunzip -c $BW_EST_FILE_JSON_GZ > $BW_EST_FILE
 fi
 if [ ! -f ${BW_EST_FILE} ]; then
@@ -66,7 +66,7 @@ fi
 
 BW_EST_FILE=tmp/libritts_validation.json
 BW_EST_FILE_JSON_GZ="datafiles/libritts/libritts_validation.json.gz"
-if [ -f ${BW_EST_FILE} ]; then
+if [ -f ${BW_EST_FILE_JSON_GZ} ]; then
     gunzip -c $BW_EST_FILE_JSON_GZ > $BW_EST_FILE
 fi
 if [ ! -f ${BW_EST_FILE} ]; then
