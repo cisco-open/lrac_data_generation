@@ -27,7 +27,7 @@ def levenshtein_metric(model, textcleaner, ref_txt, inf, lang_id, fs=16000):
             Please use the model in https://huggingface.co/espnet/owsm_v3.1_ebf
             to get comparable results.
         textcleaner: Text normalization module
-            Please use Whisper's normalizer ("whisper_en") to get comparable results.
+            Please use Whisper's normalizer ("whisper_basic") to get comparable results.
         ref_txt (string): reference transcript
         inf (np.ndarray): enhanced signal (time,)
         fs (int): sampling rate in Hz
@@ -160,7 +160,6 @@ def main(args):
     )
     # print([a for a in model.s2t_model.token_list if "<" in a and ">" in a], flush=True)
     textcleaner = TextCleaner("whisper_basic")
-    # textcleaner = TextCleaner("whisper_en")
     ret = []
     for uid, ref_text, inf_audio, lang_id in tqdm(data_pairs):
         _, score = process_one_pair(
