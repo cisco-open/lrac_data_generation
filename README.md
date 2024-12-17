@@ -141,6 +141,7 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
 6. Install eSpeak-NG (used for the phoneme similarity metric computation)
    - Follow the instructions in https://github.com/espeak-ng/espeak-ng/blob/master/docs/guide.md#linux
+   - NOTE: if you build `eSpeak-NG` from source (not by e.g., apt-get), it may cause an error when running `evaluation_metrics/calculate_phoneme_similarity.py`. Refer to the troubleshooting below if you encounter the issue.
 
 <!--
 ## Optional: Prepare webdataset
@@ -169,45 +170,82 @@ sampling frequency lower than the prescribed frequency.
 
 ## Trouble Shooting
 
-### Error when unpacking MLS .tar.gz files
+<details>
 
-Sometimes, an error like the following happens when unpacking .tar.gz files in `utils/prepare_MLS_speech.sh`.
+  <summary><strong>Errors when unpacking MLS .tar.gz files</strong></summary>
+  
+  <br>
 
-If you encounter this error, please just retry the script after deleting `./mls_segments/download_mls_${lang}_${split}_${track}.done` for the failed language, split (train or dev), and track (track1 or track2).
+  Sometimes, an error like the following happens when unpacking .tar.gz files in `utils/prepare_MLS_speech.sh`.
 
-In the following example, one needs to remove `./mls_segments/download_mls_spanish_train_track1.done` before rerunning the script again.
+  If you encounter this error, please just retry the script after deleting `./mls_segments/download_mls_${lang}_${split}_${track}.done` for the failed language, split (train or dev), and track (track1 or track2).
 
-```sh
-=== Preparing MLS data for track1 ===                                                                                                                                                                                 
-=== Preparing MLS german train data ===                                                                                                                                                                               
-[MLS-german-train_track1] downloading data                                                                                                                                                                            
-=== Preparing MLS german dev data ===                                                                                                                                                                                 
-[MLS-german-dev] downloading data                                                                                                                                                                                     
-=== Preparing MLS french train data ===                                                                                                                                                                               
-[MLS-french-train_track1] downloading data                                                                                                                                                                            
-=== Preparing MLS french dev data ===                                                                                                                                                                                 
-[MLS-french-dev] downloading data
-=== Preparing MLS spanish train data ===
-[MLS-spanish-train_track1] downloading data
-tar: ./3946/3579: Cannot mkdir: No such file or directory
-tar: ./3946/8075: Cannot mkdir: No such file or directory
-tar: ./9972/10719: Cannot mkdir: No such file or directory
-tar: Exiting with failure status due to previous errors
-tar: Exiting with failure status due to previous errors
-tar: Exiting with failure status due to previous errors
-```
+  In the following example, one needs to remove `./mls_segments/download_mls_spanish_train_track1.done` before rerunning the script again.
 
+  ```sh
+  === Preparing MLS data for track1 ===                                                                                                                                                                                 
+  === Preparing MLS german train data ===                                                                                                                                                                               
+  [MLS-german-train_track1] downloading data                                                                                                                                                                            
+  === Preparing MLS german dev data ===                                                                                                                                                                                 
+  [MLS-german-dev] downloading data                                                                                                                                                                                     
+  === Preparing MLS french train data ===                                                                                                                                                                               
+  [MLS-french-train_track1] downloading data                                                                                                                                                                            
+  === Preparing MLS french dev data ===                                                                                                                                                                                 
+  [MLS-french-dev] downloading data
+  === Preparing MLS spanish train data ===
+  [MLS-spanish-train_track1] downloading data
+  tar: ./3946/3579: Cannot mkdir: No such file or directory
+  tar: ./3946/8075: Cannot mkdir: No such file or directory
+  tar: ./9972/10719: Cannot mkdir: No such file or directory
+  tar: Exiting with failure status due to previous errors
+  tar: Exiting with failure status due to previous errors
+  tar: Exiting with failure status due to previous errors
+  ```
 
-### Warnings when processing FMA data
+</details>
 
-When preparing FMA data, following warnings appear but you can just ignore them.
+<br>
 
-```sh
-[FMA noise] split training and validation data
-[FMA noise] resampling to estimated audio bandwidth
-  0%|                                                                                          | 0/19902 [00:00<?, ?it/s][src/libmpg123/layer3.c:INT123_do_layer3():1801] error: dequantization failed!
-[src/libmpg123/layer3.c:INT123_do_layer3():1771] error: part2_3_length (3264) too large for available bit count (3224)
-[src/libmpg123/layer3.c:INT123_do_layer3():1841] error: dequantization failed!
-[src/libmpg123/layer3.c:INT123_do_layer3():1801] error: dequantization failed!
-...
-```
+<details>
+
+  <summary><strong>Warnings when processing FMA data</strong></summary>
+
+  <br>
+
+  When preparing FMA data, following warnings appear but you can just ignore them.
+  
+
+  ```sh
+  [FMA noise] split training and validation data
+  [FMA noise] resampling to estimated audio bandwidth
+    0%|                                                                                          | 0/19902 [00:00<?, ?it/s][src/libmpg123/layer3.c:INT123_do_layer3():1801] error: dequantization failed!
+  [src/libmpg123/layer3.c:INT123_do_layer3():1771] error: part2_3_length (3264) too large for available bit count (3224)
+  [src/libmpg123/layer3.c:INT123_do_layer3():1841] error: dequantization failed!
+  [src/libmpg123/layer3.c:INT123_do_layer3():1801] error: dequantization failed!
+  ...
+  ```
+
+</details>
+
+<br>
+
+<details>
+  <summary><strong>TypeError when running calculate_phoneme_similarity.py</strong></summary>
+
+  <br>
+
+  The following error may happen when running `evaluation_metrics/calculate_phoneme_similarity.py`.
+
+  This is because phoneme recognizer requires `lib` while only `bin` directory exists, depending on how you built `eSpeak-NG`.
+
+  Adding the path to `LD_LIBRARY_PATH` solves the issue.
+
+  ```sh
+  evaluation_metrics/calculate_phoneme_similarity.py", line 58, in __init__
+    self.phoneme_predictor = PhonemePredictor(device=device)
+  urgent2025_challenge/evaluation_metrics/calculate_phoneme_similarity.py", line 29, in __init__
+      self.processor = Wav2Vec2Processor.from_pretrained(checkpoint)
+
+  TypeError: Received a bool for argument tokenizer, but a PreTrainedTokenizerBase was expected.
+  ```
+</details>
