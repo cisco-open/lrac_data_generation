@@ -38,8 +38,8 @@ def speech_bert_score_metric(model, ref, inf, fs=16000):
 
     Args:
         model (torch.nn.Module): SpeechBERTScore model
-            Please use the model with model_type="hubert-base" and layer=8
-            to get comparable results.
+            Please use the model with model_type="mhubert-147" and layer=8
+            to get comparable results on multilingual data.
         ref (np.ndarray): reference signal (time,)
         inf (np.ndarray): enhanced signal (time,)
         fs (int): sampling rate in Hz
