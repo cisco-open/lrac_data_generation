@@ -34,7 +34,7 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 - At least 1.3 TB of free disk space for the track 1 and ??? TB for the track 2
 - Note that we only counted audio files and did not include the size of archived files (e.g., .zip or .tar.gz files)
   - Speech
-    - DNS5 speech (original 131 GB + resampled 187 GB): 318 GB
+    - DNS5 speech (original 131 GB + resampled 94 GB): 225 GB
     - LibriTTS (original 44 GB + resampled 7 GB): 51 GB
     - VCTK: 12 GB
     - WSJ (original sph 24GB + converted 31 GB): 55 GB
