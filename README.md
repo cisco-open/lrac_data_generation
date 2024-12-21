@@ -93,7 +93,16 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
     c. Right-click the `Download Dataset Bundle` button and select "Copy link"
 
-    d. Paste the link to [utils/prepare_CommonVoice19_speech.sh](https://github.com/kohei0209/urgnet2025/blob/a2fa5ef53f9ef8eab527a37dcb8aca5aae76ac71/utils/prepare_CommonVoice19_speech.sh#L16-L19)
+    d. Paste the link to Lines `URLs=(...)` in [utils/prepare_CommonVoice19_speech.sh](https://github.com/kohei0209/urgnet2025/blob/a2fa5ef53f9ef8eab527a37dcb8aca5aae76ac71/utils/prepare_CommonVoice19_speech.sh#L16-L19) like
+    ```bash
+    URLs=(
+      "https://storage.googleapis.com/common-voice-prod-prod-datasets/cv-corpus-19.0-2024-09-13/cv-corpus-19.0-2024-09-13-de.tar.gz?xxxxxx"
+      "https://storage.googleapis.com/common-voice-prod-prod-datasets/cv-corpus-19.0-2024-09-13/cv-corpus-19.0-2024-09-13-en.tar.gz?xxxxxx"
+      "https://storage.googleapis.com/common-voice-prod-prod-datasets/cv-corpus-19.0-2024-09-13/cv-corpus-19.0-2024-09-13-es.tar.gz?xxxxxx"
+      "https://storage.googleapis.com/common-voice-prod-prod-datasets/cv-corpus-19.0-2024-09-13/cv-corpus-19.0-2024-09-13-fr.tar.gz?xxxxxx"
+      "https://storage.googleapis.com/common-voice-prod-prod-datasets/cv-corpus-19.0-2024-09-13/cv-corpus-19.0-2024-09-13-zh-CN.tar.gz?xxxxxx"
+    )
+    ```
 
 3. Make a symbolic link to wsj0 and wsj1 data
 
