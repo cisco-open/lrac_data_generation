@@ -16,9 +16,11 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
 ## Notes
 
+- If you do not have the license of the WSJ corpora, please reach out to the organizers (urgent.challenge@gmail.com) for a temporary license supported by LDC. Please include your name, organization/affiliation, and the username used in the leaderboard in the email for a smooth procedure. Note that we do not accept the request unless you have registered to the challenge leaderboard (refer to this page to know how to register).
+
 - Please check the trouble shooting at the tail of this README first if you encounter some problems. Please raise an issue when you find any other problems.
 
-- The default generated `data/speech_train` subset is only intended for **dynamic mixing (on-the-fly simulation)** in the ESPnet framework. It has the same content in `spk1.scp` (clean reference speech) and `wav.scp` (noisy speech) files to facilitate on-the-fly simulation of different distortions.
+- The default generated `data/speech_train` subset is only intended for **dynamic mixing (on-the-fly simulation)** in the ESPnet framework. It has the same content in `spk1.scp` (clean reference speech) and `wav.scp` (originally intended to point noisy speech) to facilitate on-the-fly simulation of different distortions.
 
 - The validation set made by this script is different from the official validation set used in the leaderboard, although the data source and the type of distortions do not change. **The official one is [here](https://drive.google.com/file/d/1Ip-C5tUNGCssT8KAjHUUoh99jkzRH6nm/view)**. Note that we only provide the noisy data but not the ground truth of the official validation set until the leaderboard swithces to test phase (Dec. 23) to avoid cheating in the leaderboard.
 
@@ -32,7 +34,11 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
 - `>8` Cores
 - At least 1.3 TB of free disk space for the track 1 and ??? TB for the track 2
-- Note that we only counted audio files and did not include the size of archived files (e.g., .zip or .tar.gz files)
+- <details>
+
+  <summary><strong>Data-size breakdown</strong></summary>
+
+  - Note: we only counted audio files and did not include the size of archived files (e.g., .zip or .tar.gz files). You can remove the archived files once the data preparation is done.
   - Speech
     - DNS5 speech (original 131 GB + resampled 94 GB): 225 GB
     - LibriTTS (original 44 GB + resampled 7 GB): 51 GB
@@ -41,7 +47,7 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
     - EARS: 61 GB
     - CommonVoice 19.0 speech
       - Track 1 (original mp3 221 GB + resampled 200 GB): 421 GB
-      - Track 2 (original mp3 221 GB + resampled fr102+ g23 GB): ??? GB
+      - Track 2 (original mp3 221 GB + resampled ??? GB): ??? GB
     - MLS (less compressed version downloaded from LibriVox)
       - Track 1 (original 60 GB + resampled 60 GB): 120 GB
       - Track 2 (original 6TB + resampled ???TB): ???TB
@@ -55,6 +61,8 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
   - Others
     - default simulated validation data: 2 GB
     - simulated wind noise for training (with default config): 1 GB
+
+  </details>
 
 
 ## Instructions
@@ -109,6 +117,9 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
     a. Make a directory `./wsj`
 
     b. Make a symbolic link to wsj0 and wsj1 under `./wsj` (`./wsj/wsj0/` and `./wsj/wsj1/`)
+
+    > NOTE:
+    > If you do not have the license of the WSJ corpora, please reach out to the organizers (urgent.challenge@gmail.com) for a temporary license supported by LDC. Please include your name, organization/affiliation, and the username used in the leaderboard in the email for a smooth procedure. Note that we do not accept the request unless you have registered to the challenge leaderboard (refer to [this page](https://urgent-challenge.github.io/urgent2025/leaderboard/) to know how to register). Note that the paticipants are allowed to train their systems using only the subset of the given dataset, and thus preliminary investigation (or even final submission) can be done without WSJ corpora.
 
 <!--
 3. Download WSJ0 and WSJ1 datasets from LDC
