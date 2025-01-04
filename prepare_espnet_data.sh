@@ -175,6 +175,7 @@ if [ ! -e "${output_dir}/tmp/speech_train_${track}.done" ]; then
             "${output_dir}"/tmp/commonvoice_19_en_train_${track} \
             "${output_dir}"/tmp/commonvoice_19_es_train_${track} \
             "${output_dir}"/tmp/commonvoice_19_fr_train_${track} \
+            "${output_dir}"/tmp/commonvoice_19_zh-CN_train_${track} \
             "${output_dir}"/tmp/mls_german_train_${track} \
             "${output_dir}"/tmp/mls_spanish_train_${track} \
             "${output_dir}"/tmp/mls_french_train_${track}
@@ -189,6 +190,7 @@ if [ ! -e "${output_dir}/tmp/speech_train_${track}.done" ]; then
         "${output_dir}"/tmp/commonvoice_19_en_train_${track} \
         "${output_dir}"/tmp/commonvoice_19_es_train_${track} \
         "${output_dir}"/tmp/commonvoice_19_fr_train_${track} \
+        "${output_dir}"/tmp/commonvoice_19_zh-CN_train_${track} \
         "${output_dir}"/tmp/mls_german_train_${track} \
         "${output_dir}"/tmp/mls_english_train_${track} \
         "${output_dir}"/tmp/mls_spanish_train_${track} \
