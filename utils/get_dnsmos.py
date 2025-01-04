@@ -5,10 +5,10 @@ from pathlib import Path
 import librosa
 import soundfile as sf
 import torch
-from tqdm import tqdm
 
 # The latest espnet is required
 from espnet2.enh.layers.dnsmos import DNSMOS_local
+from tqdm import tqdm
 
 
 def str2bool(value: str) -> bool:
@@ -47,6 +47,7 @@ def get_dnsmos(data, dnsmos_model):
             audio, fs = sf.read(dic["audio_path"])
             if fs != 16000:
                 audio = librosa.resample(audio, orig_sr=fs, target_sr=16000)
+                fs = 16000
             prev_audio_path = dic["audio_path"]
             prev_audio = audio
         if "start" in dic and "end" in dic:
