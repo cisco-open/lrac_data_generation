@@ -13,7 +13,7 @@ mkdir -p "${output_dir}"
 
 
 langs=("de" "en" "es" "fr" "zh-CN")
-# Please fill in URLs
+# Please fill in URLs. Refer to README.md for more details.
 # german, english, spanish, french, and chinese (china)
 URLs=(
 )
@@ -54,7 +54,7 @@ if [ ! -f "${output_dir}/download_commonvoice.done" ]; then
     touch "${output_dir}/download_commonvoice.done"
 fi
 
-for lang in de en es fr zh-CN; do
+for lang in ${langs[@]}; do
     # untar the .tar.gz file
     output_dir_lang="${output_dir}/cv-corpus-19.0-2024-09-13/${lang}"
     if [ ! -d "${output_dir_lang}/clips" ]; then
@@ -116,27 +116,34 @@ for lang in de en es fr zh-CN; do
             --tsv_path "${output_dir_lang}/${split}.tsv" \
             --outfile commonvoice_19.0_${lang}_resampled_${split_name}.scp
 
+        python utils/get_commonvoice_transcript.py \
+            --audio_scp commonvoice_19.0_${lang}_resampled_${split_name}.scp \
+            --tsv_path "${output_dir_lang}/${split}.tsv" \
+            --outfile commonvoice_19.0_${lang}_resampled_${split_name}.text
+
         # "other" split is included in training data in track2
-        if [ $split_track == "train_track2" ]; then
+        if [[ $split_track == "train_track2" || ( $lang == "zh-CN" && $split == "train" )  ]]; then
             python utils/get_commonvoice_subset_split.py \
                 --scp_path ${RESAMP_SCP_FILE} \
                 --tsv_path "${output_dir_lang}/other.tsv" \
                 --outfile commonvoice_19.0_${lang}_resampled_other.scp
             
+            python utils/get_commonvoice_transcript.py \
+            --audio_scp commonvoice_19.0_${lang}_resampled_other.scp \
+            --tsv_path "${output_dir_lang}/other.tsv" \
+            --outfile commonvoice_19.0_${lang}_resampled_other.text
+
             cat commonvoice_19.0_${lang}_resampled_other.scp >> commonvoice_19.0_${lang}_resampled_${split_name}.scp
-            rm commonvoice_19.0_${lang}_resampled_other.scp
+            cat commonvoice_19.0_${lang}_resampled_other.text >> commonvoice_19.0_${lang}_resampled_${split_name}.text
+            rm commonvoice_19.0_${lang}_resampled_other.scp commonvoice_19.0_${lang}_resampled_other.text
             sort -k1 commonvoice_19.0_${lang}_resampled_${split_name}.scp -o commonvoice_19.0_${lang}_resampled_${split_name}.scp
+            sort -k1 commonvoice_19.0_${lang}_resampled_${split_name}.text -o commonvoice_19.0_${lang}_resampled_${split_name}.text
         fi
-            
+
         awk 'FNR==NR {arr[$2]=$1; next} {print($1" cv11_"arr[$1".mp3"])}' \
             "${output_dir_lang}/${split}.tsv" \
             commonvoice_19.0_${lang}_resampled_${split_name}.scp \
             > commonvoice_19.0_${lang}_resampled_${split_name}.utt2spk
-
-        python utils/get_commonvoice_transcript.py \
-            --audio_scp commonvoice_19.0_${lang}_resampled_${split_name}.scp \
-            --tsv_path "${output_dir_lang}/${split}.tsv" \
-            --outfile commonvoice_19.0_${lang}_resampled_${split_name}.text
 
     done
 done
