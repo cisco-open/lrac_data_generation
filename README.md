@@ -6,6 +6,18 @@ See the [instruction](https://github.com/kohei0209/espnet/blob/urgent2025/egs2/u
 
 ## Updates
 
+❗️❗️[**2025-1-5**] There was a bug in `prepare_espnet_data.sh` that the final scp files (generated under `data/speech_track*/`) did not include the Chinese subset of the CommonVoice dataset. Please pull the latest commit and do the following:
+```sh
+# change the track number accordingly
+track=track1
+
+# then remove .done file so the necessary steps are not skipped
+rm data/tmp/speech_train_${track}.done data/tmp/commonvoice19_${track}.done
+
+# generate the scp files
+. prepare_espnet_data.sh
+```
+
 ❗️❗️[**2024-11-27**] We added trouble shooting for some known issues at the tail of this README. Please check it first if you encounter some problems.
 
 ❗️❗️[**2024-11-19**] We modified [ESTOI evaluation](https://github.com/urgent-challenge/urgent2025_challenge/blob/main/evaluation_metrics/calculate_intrusive_se_metrics.py) to be deterministic (it has [randomness](https://github.com/mpariente/pystoi/blob/74872b000753a7a42ff51aa0868af8c82c7f9053/pystoi/utils.py#L178)).
@@ -268,4 +280,23 @@ sampling frequency lower than the prescribed frequency.
 
   TypeError: Received a bool for argument tokenizer, but a PreTrainedTokenizerBase was expected.
   ```
+</details>
+
+<br>
+
+<details>
+  <summary><strong>SDR/ESTOI scores from calculate_intrusive_se_metrics.py are weird</strong></summary>
+
+  <br>
+
+  There are cases where SDR and ESTOI scores obtained from `evaluation_metrics/calculate_intrusive_se_metrics.py` are obviously weird (e.g., SDR becomes 50 or -50).
+
+  This could be because `np.linalg.solve` can give solutions on different machines (cf. [here](https://stackoverflow.com/questions/77815731/numpy-np-linalg-solve-give-two-different-solution-on-different-machines)).
+
+  We have found that upgrading Numpy to 1.26 solves this problem.
+
+  For debugging, you can run the evaluation on noisy speeches after upgrading Numpy and compare the scores with those in the leaderboard.
+
+  Note that while ESPnet requires Numpy<=1.24, we have not encountered the issue due to upgrading Numpy to 1.26.
+
 </details>
