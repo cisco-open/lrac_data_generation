@@ -123,7 +123,7 @@ if [ ! -e "${output_dir}/tmp/ears.done" ]; then
 fi
 touch "${output_dir}/tmp/ears.done"
 
-if [ ! -e "${output_dir}/tmp/commonvoice19.done" ]; then
+if [ ! -e "${output_dir}/tmp/commonvoice19_${track}.done" ]; then
     ./utils/prepare_CommonVoice19_speech.sh ${track}
     for subset in train; do
         for lang in de en es fr zh-CN; do
@@ -140,12 +140,18 @@ if [ ! -e "${output_dir}/tmp/commonvoice19.done" ]; then
     done
     mv commonvoice_19.0_*_resampled_validation.* "${output_dir}/tmp/"
 fi
-touch "${output_dir}/tmp/commonvoice19.done"
+touch "${output_dir}/tmp/commonvoice19_${track}.done"
 
 if [ ! -e "${output_dir}/tmp/mls.done" ]; then
     ./utils/prepare_MLS_speech.sh ${track}
+
+    if [ $track == "track1" ]; then
+        langs="german french spanish"
+    else
+        langs="german english french spanish"
+    fi
     for subset in train; do
-        for lang in german french spanish; do
+        for lang in ${langs[@]}; do
             mkdir -p "${output_dir}/tmp/mls_${lang}_${subset}_${track}"
             awk '{print $1" "$3}' mls_${lang}_resampled_${subset}_${track}.scp > "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/wav.scp
             cp mls_${lang}_resampled_${subset}_${track}.utt2spk "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/utt2spk
