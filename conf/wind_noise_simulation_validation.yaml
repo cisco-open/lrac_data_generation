@@ -1,5 +1,8 @@
 duration: 15
 gustiness_range: [3, 10]
+
+# wind profile_* parameters defined here are ignored in the simulation process
+# so please just ignore them
 wind_profile_magnitude_range: [200, 500]
 wind_profile_acceptable_transition_threshold: 100
 

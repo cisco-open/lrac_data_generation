@@ -44,6 +44,9 @@ for seed, sample_rate in zip(config["seeds"], config["sample_rates"]):
             config["gustiness_range"][0], config["gustiness_range"][1]
         )  # Number of speed points. One yields constant wind. High values yields gusty wind.
         number_points_wind_profile = int(1.5 * gustiness)
+
+        # wind_profile is ignored when generate=True is given to wng
+        # so wind_profile defined here is just a placeholder and you can ignore it.
         wind_profile = [
             np.random.uniform(
                 config["wind_profile_magnitude_range"][0],
