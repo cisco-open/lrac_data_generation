@@ -41,8 +41,21 @@ rm data/tmp/speech_train_${track}.done data/tmp/commonvoice19_${track}.done
 * To use a fixed simulation training set (without dynamic mixing), you could follow the [commented lines](https://github.com/urgent-challenge/urgent2024_challenge/blob/main/prepare_espnet_data.sh#L188-L210) in the [`prepare_espnet_data.sh`](https://github.com/urgent-challenge/urgent2024_challenge/blob/main/prepare_espnet_data.sh) script to generate `data/train`.
 -->
 
+## Dataset description
 
-## Requirements
+There are four data splits in the challenge.
+For more details, please refer to [this page](https://urgent-challenge.github.io/urgent2025/data/).
+
+- Training/unofficial validation set: the training and validation set automatically prepared by the scripts in this repo. Paritipants are allowed to make unofficial validation data with their own configuration.
+
+- Official validation set: the validation set used in the leaderboard during the validation phase (2024/11/25 - 2024/12/23). [Noisy](https://drive.google.com/file/d/1Ip-C5tUNGCssT8KAjHUUoh99jkzRH6nm/view) and [clean](https://drive.google.com/file/d/11geBBf24WKN1xT_NasnI4JrmKpqNo8h9/view) speeches as well as the [metadata](https://drive.google.com/file/d/1CU5QKYOgG4fUuJ8oAC6BEhI9ZDhQYZpF/view) are available.
+
+- Non-blind test set: the dataset used in the non-blind test phase (2024/12/23 - 2025/01/20). Only [noisy speeches](https://drive.google.com/file/d/1rxV6RgA4LAp2I1EnHsln7wI7-UCP6Qer/view) are available now and clean speeches and metadata will be released once the non-blind test phase ends.
+
+- Blind test set: the dataset used for the final ranking. Will be available after 2025/01/21.
+
+
+## Requirements for data preparation
 
 - `>8` Cores
 - At least 1.3 TB of free disk space for the track 1 and ??? TB for the track 2
@@ -77,7 +90,7 @@ rm data/tmp/speech_train_${track}.done data/tmp/commonvoice19_${track}.done
   </details>
 
 
-## Instructions
+## Instructions for data preparation
 
 0. After cloning this repository, run the following command to initialize the submodules:
     ```bash
