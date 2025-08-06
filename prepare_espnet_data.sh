@@ -1,318 +1,241 @@
 #!/bin/bash
 
-# Set bash to 'debug' mode, it will exit on :
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
+# --- Shell Configuration ---
+# Exit script on error (-e), on undefined variable (-u),
+# on error in a pipeline (-o pipefail), and print commands (-x).
+set -euo pipefail
 
-
+# --- Global Variables ---
 export PATH=$PATH:$PWD/utils
 output_dir="./data"
-track=track1
-################################################################
-# Note:
-#---------------------------------------------------------------
-# 1. Unless explicitly mentioned, no GPU is required to run each
-#    of the scripts.
-# 2. Multiple CPUs may be required if the argument --nj or
-#    --nsplits is specified for some python scripts in
-#    ./utils/prepare_***.sh.
-# 3. For the ./utils/prepare_***.sh scripts, it is recommended
-#    to check the variables defined in the beginning of each
-#    script and fill appropriate values before running them.
-# 4. For the ./utils/prepare_***.sh scripts, the `output_dir`
-#    variable is used to specify the directory for storing
-#    downloaded audio data as well some meta data.
-################################################################
+
+# --- Helper Functions ---
+
+# Processes a speech dataset to create Kaldi-style files (wav.scp, utt2spk, etc.).
+#
+# Arguments:
+#   $1: dataset_name - The unique name for the dataset (e.g., "libritts").
+#   $2: curation_prefix - The path and file prefix for the intermediate curation files.
+#   $3: output_dir - The main directory where all data is stored.
+#
+process_speech_dataset() {
+    local dataset_name="$1"
+    local curation_prefix="$2"
+    local output_dir="$3"
+    local target_dir="${output_dir}/tmp/${dataset_name}"
+
+    echo "INFO: Processing dataset: ${dataset_name}"
+    mkdir -p "${target_dir}"
+
+    # Create Kaldi-style files from the curation data
+    awk '{print $1" "$3}' "${curation_prefix}.scp" > "${target_dir}/wav.scp"
+    cp "${curation_prefix}.utt2spk" "${target_dir}/utt2spk"
+    cp "${curation_prefix}.text" "${target_dir}/text"
+    cp "${curation_prefix}.spk2gender" "${target_dir}/spk2gender"
+    utils/utt2spk_to_spk2utt.pl "${target_dir}/utt2spk" > "${target_dir}/spk2utt"
+    awk '{print $1" "$2}' "${curation_prefix}.scp" > "${target_dir}/utt2fs"
+    awk '{print $1" 1ch_"$2"Hz"}' "${curation_prefix}.scp" > "${target_dir}/utt2category"
+    cp "${target_dir}/wav.scp" "${target_dir}/spk1.scp"
+
+    # Clean up by moving the large intermediate files
+    mv "${curation_prefix}".* "${output_dir}/tmp/"
+    echo "INFO: Finished processing ${dataset_name}."
+}
 
 
-################################
-# DNSMOS models onnx files
-################################
-./utils/download_dnsmos_onnx.sh
+################################################################################
+#
+#                                --- NOTES ---
+#
+# 1. Unless explicitly mentioned, no GPU is required to run these scripts.
+# 2. Multiple CPUs may be required if --nj or --nsplits is specified for
+#    python scripts in ./utils/.
+# 3. Before running ./utils/prepare_***.sh scripts, please check the variables
+#    defined at the beginning of each script and fill in appropriate values.
+# 4. The `output_dir` variable specifies the directory for storing downloaded
+#    audio data and metadata.
+#
+################################################################################
 
-################################
-# Speech data
-################################
+
+# --- Stage 1: Prepare Speech Datasets ---
+echo "Stage 1: Preparing all speech datasets..."
 mkdir -p "${output_dir}/tmp"
 
 if [ ! -e "${output_dir}/tmp/dns5_librivox.done" ]; then
-    # It is recommended to use GPU (--use_gpu True) to run `python utils/get_dnsmos.py` inside the following script
+    echo "Preparing DNS5 LibriVox..."
+    # Note: It is recommended to use GPU for get_dnsmos.py inside this script.
     ./utils/prepare_DNS5_librivox_speech.sh
-    for subset in train; do
-        mkdir -p "${output_dir}/tmp/dns5_librivox_${subset}"
-        awk '{print $1" "$3}' dns5_clean_read_speech_resampled_filtered_${subset}.scp > "${output_dir}"/tmp/dns5_librivox_${subset}/wav.scp
-        cp dns5_clean_read_speech_resampled_filtered_${subset}.utt2spk "${output_dir}"/tmp/dns5_librivox_${subset}/utt2spk
-        cp dns5_clean_read_speech_resampled_filtered_${subset}.text "${output_dir}"/tmp/dns5_librivox_${subset}/text
-        utils/utt2spk_to_spk2utt.pl "${output_dir}"/tmp/dns5_librivox_${subset}/utt2spk > "${output_dir}"/tmp/dns5_librivox_${subset}/spk2utt
-        awk '{print $1" "$2}' dns5_clean_read_speech_resampled_filtered_${subset}.scp > "${output_dir}"/tmp/dns5_librivox_${subset}/utt2fs
-        awk '{print $1" 1ch_"$2"Hz"}' dns5_clean_read_speech_resampled_filtered_${subset}.scp > "${output_dir}"/tmp/dns5_librivox_${subset}/utt2category
-        cp "${output_dir}"/tmp/dns5_librivox_${subset}/wav.scp "${output_dir}"/tmp/dns5_librivox_${subset}/spk1.scp
-        mv dns5_clean_read_speech_resampled_filtered_${subset}.* "${output_dir}/tmp/"
-    done
-    mv dns5_clean_read_speech_resampled_filtered_validation.* "${output_dir}/tmp/"
+    process_speech_dataset "dns5_librivox" "tmp/dns5_clean_read_speech_resampled_filtered_curation" "${output_dir}"
+    touch "${output_dir}/tmp/dns5_librivox.done"
 fi
-touch "${output_dir}/tmp/dns5_librivox.done"
 
 if [ ! -e "${output_dir}/tmp/libritts.done" ]; then
+    echo "Preparing LibriTTS..."
     ./utils/prepare_LibriTTS_speech.sh
-    for subset in train; do
-        mkdir -p "${output_dir}/tmp/libritts_${subset}"
-        awk '{print $1" "$3}' libritts_resampled_${subset}.scp > "${output_dir}"/tmp/libritts_${subset}/wav.scp
-        cp libritts_resampled_${subset}.utt2spk "${output_dir}"/tmp/libritts_${subset}/utt2spk
-        cp libritts_resampled_${subset}.text "${output_dir}"/tmp/libritts_${subset}/text
-        utils/utt2spk_to_spk2utt.pl "${output_dir}"/tmp/libritts_${subset}/utt2spk > "${output_dir}"/tmp/libritts_${subset}/spk2utt
-        awk '{print $1" "$2}' libritts_resampled_${subset}.scp > "${output_dir}"/tmp/libritts_${subset}/utt2fs
-        awk '{print $1" 1ch_"$2"Hz"}' libritts_resampled_${subset}.scp > "${output_dir}"/tmp/libritts_${subset}/utt2category
-        cp "${output_dir}"/tmp/libritts_${subset}/wav.scp "${output_dir}"/tmp/libritts_${subset}/spk1.scp
-        mv libritts_resampled_${subset}.* "${output_dir}/tmp/"
-    done
-    mv libritts_resampled_validation.* "${output_dir}/tmp/"
+    process_speech_dataset "libritts" "tmp/libritts_resampled_filtered_curation" "${output_dir}"
+    touch "${output_dir}/tmp/libritts.done"
 fi
-touch "${output_dir}/tmp/libritts.done"
 
 if [ ! -e "${output_dir}/tmp/vctk.done" ]; then
+    echo "Preparing VCTK..."
     ./utils/prepare_VCTK_speech.sh
-    for subset in train; do
-        mkdir -p "${output_dir}/tmp/vctk_${subset}"
-        awk '{print $1" "$3}' vctk_${subset}.scp > "${output_dir}"/tmp/vctk_${subset}/wav.scp
-        cp vctk_${subset}.utt2spk "${output_dir}"/tmp/vctk_${subset}/utt2spk
-        cp vctk_${subset}.text "${output_dir}"/tmp/vctk_${subset}/text
-        utils/utt2spk_to_spk2utt.pl "${output_dir}"/tmp/vctk_${subset}/utt2spk > "${output_dir}"/tmp/vctk_${subset}/spk2utt
-        awk '{print $1" "$2}' vctk_${subset}.scp > "${output_dir}"/tmp/vctk_${subset}/utt2fs
-        awk '{print $1" 1ch_"$2"Hz"}' vctk_${subset}.scp > "${output_dir}"/tmp/vctk_${subset}/utt2category
-        cp "${output_dir}"/tmp/vctk_${subset}/wav.scp "${output_dir}"/tmp/vctk_${subset}/spk1.scp
-        mv vctk_${subset}.* "${output_dir}/tmp/"
-    done
-    mv vctk_validation.* "${output_dir}/tmp/"
+    process_speech_dataset "vctk" "tmp/vctk_resampled_filtered_curation" "${output_dir}"
+    touch "${output_dir}/tmp/vctk.done"
 fi
-touch "${output_dir}/tmp/vctk.done"
-
-if [ ! -e "${output_dir}/tmp/wsj.done" ]; then
-    ./utils/prepare_WSJ_speech.sh
-    for subset in train; do
-        mkdir -p "${output_dir}/tmp/wsj_${subset}"
-        awk '{print $1" "$3}' wsj_${subset}.scp > "${output_dir}"/tmp/wsj_${subset}/wav.scp
-        cp wsj_${subset}.utt2spk "${output_dir}"/tmp/wsj_${subset}/utt2spk
-        cp wsj_${subset}.text "${output_dir}"/tmp/wsj_${subset}/text
-        utils/utt2spk_to_spk2utt.pl "${output_dir}"/tmp/wsj_${subset}/utt2spk > "${output_dir}"/tmp/wsj_${subset}/spk2utt
-        awk '{print $1" "$2}' wsj_${subset}.scp > "${output_dir}"/tmp/wsj_${subset}/utt2fs
-        awk '{print $1" 1ch_"$2"Hz"}' wsj_${subset}.scp > "${output_dir}"/tmp/wsj_${subset}/utt2category
-        cp "${output_dir}"/tmp/wsj_${subset}/wav.scp "${output_dir}"/tmp/wsj_${subset}/spk1.scp
-        mv wsj_${subset}.* "${output_dir}/tmp/"
-    done
-    mv wsj_validation.* "${output_dir}/tmp/"
-fi
-touch "${output_dir}/tmp/wsj.done"
 
 if [ ! -e "${output_dir}/tmp/ears.done" ]; then
+    echo "Preparing EARS..."
     ./utils/prepare_EARS_speech.sh
-    for subset in train; do
-        mkdir -p "${output_dir}/tmp/ears_${subset}"
-        awk '{print $1" "$3}' ears_${subset}.scp > "${output_dir}"/tmp/ears_${subset}/wav.scp
-        cp ears_${subset}.utt2spk "${output_dir}"/tmp/ears_${subset}/utt2spk
-        cp ears_${subset}.text "${output_dir}"/tmp/ears_${subset}/text
-        utils/utt2spk_to_spk2utt.pl "${output_dir}"/tmp/ears_${subset}/utt2spk > "${output_dir}"/tmp/ears_${subset}/spk2utt
-        awk '{print $1" "$2}' ears_${subset}.scp > "${output_dir}"/tmp/ears_${subset}/utt2fs
-        awk '{print $1" 1ch_"$2"Hz"}' ears_${subset}.scp > "${output_dir}"/tmp/ears_${subset}/utt2category
-        cp "${output_dir}"/tmp/ears_${subset}/wav.scp "${output_dir}"/tmp/ears_${subset}/spk1.scp
-        mv ears_${subset}.* "${output_dir}/tmp/"
-    done
-    mv ears_validation.* "${output_dir}/tmp/"
+    process_speech_dataset "ears" "tmp/ears_resampled_filtered_curation" "${output_dir}"
+    touch "${output_dir}/tmp/ears.done"
 fi
-touch "${output_dir}/tmp/ears.done"
-
-if [ ! -e "${output_dir}/tmp/commonvoice19_${track}.done" ]; then
-    ./utils/prepare_CommonVoice19_speech.sh ${track}
-    for subset in train; do
-        for lang in de en es fr zh-CN; do
-            mkdir -p "${output_dir}/tmp/commonvoice_19_${lang}_${subset}_${track}"
-            awk '{print $1" "$3}' commonvoice_19.0_${lang}_resampled_${subset}_${track}.scp > "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/wav.scp
-            cp commonvoice_19.0_${lang}_resampled_${subset}_${track}.utt2spk "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/utt2spk
-            cp commonvoice_19.0_${lang}_resampled_${subset}_${track}.text "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/text
-            utils/utt2spk_to_spk2utt.pl "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/utt2spk > "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/spk2utt
-            awk '{print $1" "$2}' commonvoice_19.0_${lang}_resampled_${subset}_${track}.scp > "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/utt2fs
-            awk '{print $1" 1ch_"$2"Hz"}' commonvoice_19.0_${lang}_resampled_${subset}_${track}.scp > "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/utt2category
-            cp "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/wav.scp "${output_dir}"/tmp/commonvoice_19_${lang}_${subset}_${track}/spk1.scp
-            mv commonvoice_19.0_${lang}_resampled_${subset}_${track}.* "${output_dir}/tmp/"
-        done
-    done
-    mv commonvoice_19.0_*_resampled_validation.* "${output_dir}/tmp/"
-fi
-touch "${output_dir}/tmp/commonvoice19_${track}.done"
 
 if [ ! -e "${output_dir}/tmp/mls.done" ]; then
-    ./utils/prepare_MLS_speech.sh ${track}
-
-    if [ $track == "track1" ]; then
-        langs="german french spanish"
-    else
-        langs="german english french spanish"
-    fi
-    for subset in train; do
-        for lang in ${langs[@]}; do
-            mkdir -p "${output_dir}/tmp/mls_${lang}_${subset}_${track}"
-            awk '{print $1" "$3}' mls_${lang}_resampled_${subset}_${track}.scp > "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/wav.scp
-            cp mls_${lang}_resampled_${subset}_${track}.utt2spk "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/utt2spk
-            cp mls_${lang}_resampled_${subset}_${track}.text "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/text
-            utils/utt2spk_to_spk2utt.pl "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/utt2spk > "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/spk2utt
-            awk '{print $1" "$2}' mls_${lang}_resampled_${subset}_${track}.scp > "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/utt2fs
-            awk '{print $1" 1ch_"$2"Hz"}' mls_${lang}_resampled_${subset}_${track}.scp > "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/utt2category
-            cp "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/wav.scp "${output_dir}"/tmp/mls_${lang}_${subset}_${track}/spk1.scp
-            mv mls_${lang}_resampled_${subset}_${track}.* "${output_dir}/tmp/"
-        done
+    echo "Preparing Multilingual LibriSpeech (MLS)..."
+    ./utils/prepare_MLS_speech.sh
+    for lang in german french spanish; do
+        process_speech_dataset "mls_${lang}" "tmp/mls_${lang}_resampled_filtered_curation" "${output_dir}"
     done
-    mv mls_*_resampled_validation.* "${output_dir}/tmp/"
+    touch "${output_dir}/tmp/mls.done"
 fi
-touch "${output_dir}/tmp/mls.done"
 
-# Combine all data (to be used for dynamic mixing only)
-mkdir -p "${output_dir}/speech_train_${track}"
-if [ ! -e "${output_dir}/tmp/speech_train_${track}.done" ]; then
-    if [ $track == "track1" ]; then
-        utils/combine_data.sh --extra_files "utt2category utt2fs spk1.scp" --skip_fix true "${output_dir}"/speech_train_${track} \
-            "${output_dir}"/tmp/dns5_librivox_train \
-            "${output_dir}"/tmp/libritts_train \
-            "${output_dir}"/tmp/vctk_train \
-            "${output_dir}"/tmp/wsj_train \
-            "${output_dir}"/tmp/ears_train \
-            "${output_dir}"/tmp/commonvoice_19_de_train_${track} \
-            "${output_dir}"/tmp/commonvoice_19_en_train_${track} \
-            "${output_dir}"/tmp/commonvoice_19_es_train_${track} \
-            "${output_dir}"/tmp/commonvoice_19_fr_train_${track} \
-            "${output_dir}"/tmp/commonvoice_19_zh-CN_train_${track} \
-            "${output_dir}"/tmp/mls_german_train_${track} \
-            "${output_dir}"/tmp/mls_spanish_train_${track} \
-            "${output_dir}"/tmp/mls_french_train_${track}
-    else
-        utils/combine_data.sh --extra_files "utt2category utt2fs spk1.scp" --skip_fix true "${output_dir}"/speech_train_${track} \
-        "${output_dir}"/tmp/dns5_librivox_train \
-        "${output_dir}"/tmp/libritts_train \
-        "${output_dir}"/tmp/vctk_train \
-        "${output_dir}"/tmp/wsj_train \
-        "${output_dir}"/tmp/ears_train \
-        "${output_dir}"/tmp/commonvoice_19_de_train_${track} \
-        "${output_dir}"/tmp/commonvoice_19_en_train_${track} \
-        "${output_dir}"/tmp/commonvoice_19_es_train_${track} \
-        "${output_dir}"/tmp/commonvoice_19_fr_train_${track} \
-        "${output_dir}"/tmp/commonvoice_19_zh-CN_train_${track} \
-        "${output_dir}"/tmp/mls_german_train_${track} \
-        "${output_dir}"/tmp/mls_english_train_${track} \
-        "${output_dir}"/tmp/mls_spanish_train_${track} \
-        "${output_dir}"/tmp/mls_french_train_${track}
+if [ ! -e "${output_dir}/tmp/globe.done" ]; then
+    echo "Preparing Globe..."
+    python ./utils/prepare_GLOBE_speech.py
+    process_speech_dataset "globe" "tmp/globe_resampled_filtered_curation" "${output_dir}"
+    touch "${output_dir}/tmp/globe.done"
+fi
+
+# Combine all speech data for dynamic mixing
+if [ ! -e "${output_dir}/tmp/speech_train.done" ]; then
+    echo "Combining all speech datasets..."
+    mkdir -p "${output_dir}/speech"
+    utils/combine_data.sh --extra_files "utt2category utt2fs spk1.scp" --skip_fix true "${output_dir}"/speech \
+        "${output_dir}"/tmp/dns5_librivox \
+        "${output_dir}"/tmp/libritts \
+        "${output_dir}"/tmp/vctk \
+        "${output_dir}"/tmp/ears \
+        "${output_dir}"/tmp/mls_german \
+        "${output_dir}"/tmp/mls_spanish \
+        "${output_dir}"/tmp/mls_french \
+        "${output_dir}"/tmp/globe
+    python utils/flac2wav.py \
+        --input_scp "${output_dir}/speech/wav.scp" \
+        --num-workers 8 \
+        --extra-files "text utt2spk spk2gender utt2fs utt2category spk1.scp"
+    touch "${output_dir}/tmp/speech_train.done"
+fi
+
+# Sort and de-duplicate combined speech files
+echo "Sorting and cleaning combined speech files..."
+for f in wav.scp spk1.scp utt2spk text utt2fs utt2category spk2gender spk2utt; do
+    if [ -f "${output_dir}/speech/$f" ]; then
+        sort -u -o "${output_dir}/speech/$f" "${output_dir}/speech/$f"
     fi
-fi
-touch "${output_dir}/tmp/speech_train_${track}.done"
+done
 
-################################
-# Noise and RIR data
-################################
-if [ ! -e "${output_dir}/tmp/dns5_noise_rir.done" ]; then
-    ./utils/prepare_DNS5_noise_rir.sh
+# Create a validation set from the combined speech data
+if [ ! -d "${output_dir}/speech_validation" ]; then
+    echo "Creating speech validation set..."
+    python utils/create_val_set_speech.py \
+        --source_dir "${output_dir}"/speech \
+        --val_dir "${output_dir}"/speech_validation \
+        --min_utts 1000 \
+        --max_utts_per_speaker 50
 fi
-touch "${output_dir}/tmp/dns5_noise_rir.done"
+
+
+# --- Stage 2: Prepare Noise and RIR Datasets ---
+echo "Stage 2: Preparing all noise and RIR datasets..."
+if [ ! -e "${output_dir}/tmp/dns5_noise_rir.done" ]; then
+    python utils/prepare_DNS5_noise_rir.py
+    touch "${output_dir}/tmp/dns5_noise_rir.done"
+fi
 
 if [ ! -e "${output_dir}/tmp/wham_noise.done" ]; then
-    ./utils/prepare_WHAM_noise.sh
+    python utils/prepare_WHAM_noise.py
+    touch "${output_dir}/tmp/wham_noise.done"
 fi
-touch "${output_dir}/tmp/wham_noise.done"
 
 if [ ! -e "${output_dir}/tmp/fsd50k_noise.done" ]; then
-    ./utils/prepare_FSD50K_noise.sh
+    python utils/prepare_FSD50K_noise.py
+    touch "${output_dir}/tmp/fsd50k_noise.done"
 fi
-touch "${output_dir}/tmp/fsd50k_noise.done"
 
 if [ ! -e "${output_dir}/tmp/fma_noise.done" ]; then
-    ./utils/prepare_FMA_noise.sh
+    python utils/prepare_FMA_noise.py
+    touch "${output_dir}/tmp/fma_noise.done"
 fi
-touch "${output_dir}/tmp/fma_noise.done"
 
-if [ ! -e "${output_dir}/tmp/wind_noise.done" ]; then
-    # NOTE: please change conf/wind_noise_simulation_{train,validation}.yaml if you want to change some configuration
-    ./utils/prepare_wind_noise.sh
+if [ ! -e "${output_dir}/tmp/motus_rir.done" ]; then
+    python utils/prepare_MOTUS_rir.py
+    touch "${output_dir}/tmp/motus_rir.done"
 fi
-touch "${output_dir}/tmp/wind_noise.done"
 
+# Combine all noise and RIR data
 if [ ! -e "${output_dir}/tmp/noise_rir.done" ]; then
-    # Combine all data for the training set
-    cat dns5_noise_resampled_train.scp wham_noise_train.scp fsd50k_noise_resampled_train.scp fma_noise_resampled_train.scp wind_noise_train.scp > "${output_dir}/noise_train.scp"
-    mv dns5_noise_resampled_train.scp wham_noise_train.scp fsd50k_noise_resampled_train.scp fma_noise_resampled_train.scp wind_noise_train.scp "${output_dir}/tmp/"
-    # awk '{print $1" "$3}' ...
+    echo "Combining noise and RIR files..."
+    cat tmp/dns5_noise_resampled_filtered_curation.scp tmp/wham_noise_resampled_filtered_curation.scp tmp/fsd50k_noise_resampled_filtered_curation.scp tmp/fma_noise_resampled_filtered_curation.scp > "${output_dir}/noise.scp"
+    mv tmp/dns5_noise_resampled_filtered_curation.scp tmp/wham_noise_resampled_filtered_curation.scp tmp/fsd50k_noise_resampled_filtered_curation.scp tmp/fma_noise_resampled_filtered_curation.scp "${output_dir}/tmp/"
+    python utils/flac2wav.py \
+        --input_scp "${output_dir}/noise.scp" \
+        --num-workers 8
 
-    # Combine all the rir data for the training set
-    cat dns5_rirs.scp > "${output_dir}/rir_train.scp"
-    # awk '{print $1" "$3}' ...
-    mv dns5_noise_resampled_validation.scp wham_noise_validation.scp fsd50k_noise_resampled_validation.scp fma_noise_resampled_validation.scp wind_noise_validation.scp dns5_rirs.scp "${output_dir}/tmp/"
+    cat tmp/dns5_rirs_resampled.scp tmp/motus_rirs_resampled_filtered_curation.scp > "${output_dir}/rirs.scp"
+    mv tmp/dns5_rirs_resampled.scp tmp/motus_rirs_resampled_filtered_curation.scp "${output_dir}/tmp/"
+    python utils/flac2wav.py \
+        --input_scp "${output_dir}/rirs.scp" \
+        --num-workers 8
+    touch "${output_dir}/tmp/noise_rir.done"
 fi
-touch "${output_dir}/tmp/noise_rir.done"
 
-##########################################
-# Data simulation for the validation set
-##########################################
-# Note: remember to modify placeholders in conf/simulation_validation.yaml before simulation.
-if [ ! -e "${output_dir}/tmp/simulation_validation.done" ]; then
-    utils/prepare_validation_data.sh
+# Create validation sets for noise and RIRs
+VAL_NOISE_LIST="datafiles/validation_noise.txt"
+VAL_RIR_LIST="datafiles/validation_rir.txt"
+echo "Creating noise and RIR validation sets..."
+for f in noise.scp rirs.scp; do
+    if [ "$f" == "noise.scp" ]; then
+        echo "  -> Processing noise validation set..."
+        if [ -f "${VAL_NOISE_LIST}" ]; then
+            python "utils/create_val_list.py" \
+                --master-scp "${output_dir}/noise.scp" \
+                --validation-list "${VAL_NOISE_LIST}" \
+                --output-scp "${output_dir}/noise_val.scp"
+        else
+            echo "  Warning: Shareable noise list not found at '${VAL_NOISE_LIST}'"
+        fi
 
-    mkdir -p "${output_dir}"/validation
-    awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="noisy_path") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_validation/log/meta.tsv | sort -u -k1,1 > "${output_dir}"/validation/wav.scp 
-    awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="speech_sid") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_validation/log/meta.tsv | sort -u -k1,1 > "${output_dir}"/validation/utt2spk
-    utils/utt2spk_to_spk2utt.pl "${output_dir}"/validation/utt2spk > "${output_dir}"/validation/spk2utt
-    awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="text") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_validation/log/meta.tsv | sort -u -k1,1 > "${output_dir}"/validation/text
-    awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="clean_path") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_validation/log/meta.tsv | sort -u -k1,1 > "${output_dir}"/validation/spk1.scp 
-    awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="fs") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_validation/log/meta.tsv | sort -u -k1,1 > "${output_dir}"/validation/utt2fs
-    awk '{print($1" 1ch_"$2"Hz")}' "${output_dir}"/validation/utt2fs > "${output_dir}"/validation/utt2category
+    elif [ "$f" == "rirs.scp" ]; then
+        echo "  -> Processing RIR validation set..."
+        if [ -f "${VAL_RIR_LIST}" ]; then
+            python "utils/create_val_list.py" \
+                --master-scp "${output_dir}/rirs.scp" \
+                --validation-list "${VAL_RIR_LIST}" \
+                --output-scp "${output_dir}/rirs_val.scp"
+        else
+            echo "  Warning: Shareable RIR list not found at '${VAL_RIR_LIST}'"
+        fi
+    fi
+done
 
-    python utils/get_utt2lang.py \
-        --meta_tsv simulation_validation/log/meta.tsv --outfile utt2lang
-    sort -u -k1,1 utt2lang > "${output_dir}"/validation/utt2lang && rm utt2lang
-fi
-touch "${output_dir}/tmp/simulation_validation.done"
+echo "Data preparation script finished successfully."
 
-#######################################################
-# Data simulation for a fixed training set (optional)
-#######################################################
-# mkdir -p simulation_train/log
-# if [ ! -e "${output_dir}/tmp/simulation_train.done" ]; then
-#     python simulation/generate_data_param.py --config conf/simulation_train.yaml
-#     # It takes ~1.5 hours to finish simulation with nj=8
-#     OMP_NUM_THREADS=1 python simulation/simulate_data_from_param.py \
-#         --config conf/simulation_train.yaml \
-#         --meta_tsv simulation_train/log/meta.tsv \
-#         --nj 8 \
-#         --chunksize 200
-# fi
-# touch "${output_dir}/tmp/simulation_train.done"
-
-# mkdir -p "${output_dir}"/train
-# awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="noisy_path") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_train/log/meta.tsv | sort -u > "${output_dir}"/train/wav.scp 
-# awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="speech_sid") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_train/log/meta.tsv | sort -u > "${output_dir}"/train/utt2spk
-# utils/utt2spk_to_spk2utt.pl "${output_dir}"/train/utt2spk > "${output_dir}"/train/spk2utt
-# awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="text") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_train/log/meta.tsv | sort -u > "${output_dir}"/train/text
-# awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="clean_path") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_train/log/meta.tsv | sort -u > "${output_dir}"/train/spk1.scp 
-# awk -F"\t" 'NR==1{for(i=1; i<=NF; i++) {if($i=="fs") {n=i; break}} next} NR>1{print($1" "$n)}' simulation_train/log/meta.tsv | sort -u > "${output_dir}"/train/utt2fs
-# awk '{print($1" 1ch_"$2"Hz")}' "${output_dir}"/train/utt2fs > "${output_dir}"/train/utt2category
-
-#--------------------------------
-# Output files:
-# -------------------------------
-# ${output_dir}/speech_train/
-#  |- wav.scp
-#  |- spk1.scp
-#  |- utt2spk
-#  |- spk2utt
-#  |- utt2fs
-#  \- utt2category
+################################################################################
 #
-# ${output_dir}/validation/
-#  |- wav.scp
-#  |- spk1.scp
-#  |- utt2spk
-#  |- spk2utt
-#  |- text
-#  |- utt2fs
-#  \- utt2category
+#                         --- FINAL OUTPUT FILES ---
 #
-# ${output_dir}/noise_train.scp
+# ${output_dir}/
+#  |- speech/
+#  |   |- wav.scp, spk1.scp, utt2spk, spk2gender, spk2utt, text, utt2fs, utt2category
+#  |
+#  |- speech_validation/
+#  |   |- wav.scp, spk1.scp, utt2spk, spk2gender, spk2utt, text, utt2fs, utt2category
+#  |
+#  |- noise.scp
+#  |- noise_val.scp
+#  |
+#  |- rirs.scp
+#  |- rirs_val.scp
 #
-# ${output_dir}/rir_train.scp
+################################################################################

@@ -2,114 +2,117 @@
 
 # Set bash to 'debug' mode, it will exit on :
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
-
-track=$1  # track1 or track2
+#set -e
+#set -u
+#set -o pipefail
 
 output_dir="./mls_segments"  # please do not change output_dir
+CURATION_FILE="./datafiles/mls/train_meta_curated.csv"
 mkdir -p "${output_dir}"
 
-if [ $track == "track1" ]; then
-    # we do not include MLS English data in the track1
-    langs=("german" "french" "spanish")
-else
-    langs=("german" "french" "spanish" "english")
-fi
+langs=("german" "french" "spanish")
 
-echo "=== Preparing MLS data for ${track} ==="
+echo "=== Preparing MLS data ==="
 
 for lang in "${langs[@]}"; do
-    for split in train dev; do
-        echo "=== Preparing MLS ${lang} ${split} data ==="
+    echo "=== Preparing MLS ${lang} data ==="
 
-        if [ $split == "train" ]; then
-            split_track="${split}_${track}"
-            split_name=$split_track
-        else
-            split_track=$split
-            split_name=validation
-        fi
+    split_track="train_track1"
+    split_name=$split_track
 
-        output_dir_lang="${output_dir}/${lang}/${split_track}"
-        mkdir -p "${output_dir_lang}/audio"
-        if [ ! -f "${output_dir}/download_mls_${lang}_${split_track}.done" ]; then
-            echo "[MLS-${lang}-${split_track}] downloading data"
-            # download data from huggingface
-            filelist=./datafiles/mls/mls_${lang}_${split_track}_data.txt
-            if [ $split_name == "train_track1" ]; then
-                cat $filelist | xargs -P 8 -n 1 -I {} sh -c '
-                    filename=$(echo "{}" | sed -E "s|.*/([0-9]+)/([0-9]+\.tar\.gz)$|\1_\2|")
-                    wget -q -c "https://huggingface.co/datasets/kohei0209/mls_hq_urgent_track1/resolve/main/{}?download=true" -O "$0/${filename}"
-                ' "$output_dir_lang" {}
-            else
-                cat $filelist | xargs -P 8 -n 1 -I {} sh -c '
-                    filename=$(echo "{}" | sed -E "s|.*/([0-9]+)/([0-9]+\.tar\.gz)$|\1_\2|")
-                    wget -q -c "https://huggingface.co/datasets/kohei0209/mls_hq/resolve/main/data/{}?download=true" -O "$0/${filename}"
-                ' "$output_dir_lang" {}
-            fi
-            # untar
-            find "${output_dir_lang}" -name "*.tar.gz" | xargs -P 8 -n 1 -I {} sh -c '
-                tar -xzf {} -C "$0/audio"
-            ' "$output_dir_lang" {}
+    output_dir_lang="${output_dir}/${lang}/train"
+    mkdir -p "${output_dir_lang}/audio"
+    if [ ! -f "${output_dir}/download_mls_${lang}.done" ]; then
+        echo "[MLS-${lang}] downloading data"
+        # download data from huggingface
+        filelist=./datafiles/mls/mls_${lang}_${split_track}_data.txt
+        cat $filelist | xargs -P 8 -I {} sh -c '
+            filename=$(echo "{}" | sed -E "s|.*/([0-9]+)/([0-9]+\.tar\.gz)$|\1_\2|")
+            curl -L -s -C - "https://huggingface.co/datasets/kohei0209/mls_hq_urgent_track1/resolve/main/{}?download=true" -o "$0/${filename}"
+        ' "$output_dir_lang" {}
+        echo "[MLS-${lang}] untarring files..."
+        find "${output_dir_lang}" -name "*.tar.gz" | xargs -I {} sh -c '
+            echo "  -> Extracting {}"
+            tar -xzf {} -C "$0/audio"
+        ' "$output_dir_lang" {}
 
-            touch "${output_dir}/download_mls_${lang}_${split_track}.done"
-        fi
+        touch "${output_dir}/download_mls_${lang}.done"
+    fi
 
-        BW_EST_FILE="tmp/mls_${lang}_${split_track}.json"
-        if [ ! -f ${BW_EST_FILE} ]; then
-            # .json.gz file containing bandwidth information for the 1st-track data is provided
-            BW_EST_FILE_JSON_GZ="./datafiles/mls/mls_${lang}_${split_track}.json.gz"
-            gunzip -c $BW_EST_FILE_JSON_GZ > $BW_EST_FILE
-        else
-            echo "Estimated bandwidth file already exists ${BW_EST_FILE}."
-        fi
+    FULL_SCP_FILE="tmp/mls_${lang}.scp"
+    ABS_OUTPUT_DIR=$(readlink -f "${output_dir}")
+    if [ ! -f ${FULL_SCP_FILE} ]; then
+        echo "[MLS-${lang}] creating scp file from ${ABS_OUTPUT_DIR}/${lang}/train"
+        find "${ABS_OUTPUT_DIR}/${lang}/train" -type f -name "*.flac" | \
+            sort | \
+            awk -v lang="${lang}" '{n=split($0,a,"/"); split(a[n],b,"."); print "mls_" lang "_" b[1] " " $0}' > ${FULL_SCP_FILE}
+        echo "[MLS-${lang}] created scp file with $(wc -l ${FULL_SCP_FILE} | awk '{print $1}') samples"
+    else
+        echo "Full dataset scp file already exists. Delete ${FULL_SCP_FILE} if you want to re-create."
+    fi
 
-        RESAMP_SCP_FILE=tmp/mls_${lang}_resampled_${split_track}.scp
-        if [ ! -f ${RESAMP_SCP_FILE} ]; then
-            echo "[MLS-${lang}-${split_track}] resampling to estimated audio bandwidth"
-            OMP_NUM_THREADS=1 python utils/resample_to_estimated_bandwidth.py \
-            --bandwidth_data ${BW_EST_FILE} \
-            --out_scpfile ${RESAMP_SCP_FILE} \
-            --outdir "${output_dir_lang}/resampled/${split_track}" \
-            --max_files 1000 \
-            --nj 8 \
-            --chunksize 1000
-        else
-            echo "Resampled scp file already exists. Delete ${RESAMP_SCP_FILE} if you want to re-resample."
-        fi
+    # remove low-quality samples
+    FILTERED_SCP_FILE="tmp/mls_${lang}_filtered_curation.scp"
+    if [ ! -f ${FILTERED_SCP_FILE} ]; then
+        echo "[MLS-${lang}] filtering using curation lists"
+        python utils/filter_via_curation_list.py \
+            --scp_path "tmp/mls_${lang}.scp" \
+            --curation_path "${CURATION_FILE}" \
+            --outfile ${FILTERED_SCP_FILE}
+    else
+        echo "Filtered scp file already exists. Delete ${FILTERED_SCP_FILE} if you want to re-estimate."
+    fi
 
-        echo "[MLS-${lang}-${split_track}] preparing data files"
-        transcript_file_path=datafiles/mls/${lang}_${split}_transcripts.txt
-        gunzip -c datafiles/mls/${lang}_${split}_transcripts.gz > $transcript_file_path
+    RESAMP_SCP_FILE="tmp/mls_${lang}_resampled_filtered_curation.scp"
+    if [ ! -f ${RESAMP_SCP_FILE} ]; then
+        echo "[EARS] resampling to 24kHz sampling rate"
+        OMP_NUM_THREADS=1 python utils/resample_to_single_fs.py \
+        --in_scpfile ${FILTERED_SCP_FILE} \
+        --out_fs 24000 \
+        --out_scpfile ${RESAMP_SCP_FILE} \
+        --outdir "${output_dir_lang}/resampled/train" \
+        --max_files 5000 \
+        --nj 8 \
+        --chunksize 1000
+    else
+        echo "Resampled scp file already exists. Delete ${RESAMP_SCP_FILE} if you want to re-resample."
+    fi
 
-        # organize the scp file
-        FINAL_SCP_FILE=mls_${lang}_resampled_${split_name}.scp
-        sort -k1 $RESAMP_SCP_FILE -o $FINAL_SCP_FILE
-        utils/filter_scp.pl $FINAL_SCP_FILE $transcript_file_path > mls_${lang}_resampled_${split_name}.text
-        awk '{split($1, arr, "_"); print($1" "arr[1])}' $FINAL_SCP_FILE > mls_${lang}_resampled_${split_name}.utt2spk
+    echo "[MLS-${lang}] preparing data files"
+    transcript_file_path=datafiles/mls/${lang}_train_transcripts.txt
+    gunzip -c datafiles/mls/${lang}_train_transcripts.gz > $transcript_file_path
+    sed -i "s/^/mls_${lang}_/" $transcript_file_path
 
-        # add language name to make utt-ids unique
-        awk -v additional="mls_${lang}_" '{print additional $1, $2, $3}' $FINAL_SCP_FILE > ./temp && mv ./temp $FINAL_SCP_FILE
-        awk -v additional="mls_${lang}_" '{print additional $1, substr($0, index($0,$2))}' mls_${lang}_resampled_${split_name}.text > ./temp && mv ./temp mls_${lang}_resampled_${split_name}.text
-        awk -v additional="mls_${lang}_" '{print additional $1, $2, $3}' mls_${lang}_resampled_${split_name}.utt2spk > ./temp && mv ./temp mls_${lang}_resampled_${split_name}.utt2spk
-    done
+    # organize the scp file
+    FINAL_SCP_FILE=tmp/mls_${lang}_resampled_filtered_curation.scp
+    sort -k1 $RESAMP_SCP_FILE -o $FINAL_SCP_FILE
+    utils/filter_scp.pl $FINAL_SCP_FILE $transcript_file_path > tmp/mls_${lang}_resampled_filtered_curation.text
+    awk '{split($1, arr, "_"); print($1" "arr[3])}' $FINAL_SCP_FILE > tmp/mls_${lang}_resampled_filtered_curation.utt2spk
+
+    echo "[MLS-${lang}] preparing spk2gender file"
+    join <(cut -d' ' -f2 tmp/mls_${lang}_resampled_filtered_curation.utt2spk | sort -u) \
+        <(awk -F, '
+            NR > 1 {
+                speaker_id = $(NF-1)
+                gender_str = $(NF)
+                gsub(/\r|"/, "", gender_str)
+                gender = (gender_str == "male" ? "m" : "f")
+                if (speaker_id != "") {
+                    print speaker_id, gender
+                }
+            }' "${CURATION_FILE}" | sort -u) \
+        > tmp/mls_${lang}_resampled_filtered_curation.spk2gender
 done
 
 
 #--------------------------------
-# Output file (for each ${lang} and ${track}):
+# Output files
 # -------------------------------
-# mls_${lang}_resampled_train_${track}.scp
+# mls_${lang}_resampled_filtered_curation.scp
 #    - scp file containing samples (after resampling) for training
-# mls_${lang}_resampled_train_${track}.utt2spk
+# mls_${lang}_resampled_filtered_curation.utt2spk
 #    - speaker mapping for training samples
-# mls_${lang}_resampled_train_${track}.text
+# mls_${lang}_resampled_filtered_curation.text
 #    - transcript for training samples
-# mls_${lang}_resampled_validation.scp
-#    - scp file containing samples (after resampling) for validation
-# mls_${lang}_resampled_validation.utt2spk
-#    - speaker mapping for validation samples
-# mls_${lang}_resampled_validation.text
-#    - transcript for validation samples
+# mls_${lang}_resampled_filtered_curation.spk2gender
+#    - speaker gender mapping for training samples

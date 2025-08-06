@@ -1,6 +1,0 @@
-[submodule "lib/NISQA"]
-	path = lib/NISQA
-	url = https://github.com/gabrielmittag/NISQA.git
-[submodule "lib/visqol"]
-	path = lib/visqol
-	url = https://github.com/google/visqol.git

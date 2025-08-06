@@ -34,12 +34,14 @@ fma/
 fsd50k/
 libritts/
 mls_segments/
+motus/
 simulation_*/
 sph2pipe-2.5/
 sph2pipe*
 vctk/
 wham_noise_48k/
 wsj/
+globe/
 simulation/SC-Wind-Noise-Generator/
 
 !datafiles/*
