@@ -1,5 +1,6 @@
-name: urgent2025
+name: lrac2025
 channels:
+  - conda-forge
   - pytorch
   - nvidia
 dependencies:
@@ -17,5 +18,7 @@ dependencies:
   - ipython
   - pytest
   - pip
+  - jq
+  - zip
   - pip:
       - -r requirements.txt
