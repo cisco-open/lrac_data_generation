@@ -10,6 +10,8 @@ The goal of the challenge is to develop an audio codec that can compress speech 
 
 ## Updates
 
+❗️❗️**[2025-08-25]** Added lists of files used for the open test set (`datafiles/open_testset`). Added evaluation data preparation for the baseline recipe.
+
 ❗️❗️**[2025-08-06]** First commit containing the data preparation core functionality.
 
 ## Table of Contents

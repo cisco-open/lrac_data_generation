@@ -9,6 +9,16 @@ set -euo pipefail
 export PATH=$PATH:$PWD/utils
 output_dir="./data"
 
+# --- Stage 0: Download Evaluation Data ---
+echo "Stage 0: Downloading evaluation data..."
+if [ ! -d "multilingual-speech-testing" ]; then
+    echo "Cloning multilingual-speech-testing repository..."
+    git clone --depth 1 --filter=blob:none --sparse https://github.com/cisco/multilingual-speech-testing.git
+    (cd multilingual-speech-testing && git sparse-checkout set LRAC-2025-test-data/open-test-set)
+else
+    echo "multilingual-speech-testing repository already exists. Skipping download."
+fi
+
 # --- Helper Functions ---
 
 # Processes a speech dataset to create Kaldi-style files (wav.scp, utt2spk, etc.).
@@ -219,6 +229,51 @@ for f in noise.scp rirs.scp; do
     fi
 done
 
+
+# --- Stage 3: Prepare Evaluation Sets ---
+echo "Stage 3: Preparing evaluation sets..."
+for track in track_1 track_2; do
+    track_num=$(echo ${track} | cut -d'_' -f2)
+    for condition in clean noisy reverb; do
+        eval_dir="${output_dir}/open_testset_track${track_num}_${condition}"
+        mkdir -p "${eval_dir}"
+
+        # Define source directories
+        source_dir="multilingual-speech-testing/LRAC-2025-test-data/open-test-set/${track}/${condition}"
+        if [ "${condition}" == "clean" ]; then
+            ref_source_dir="multilingual-speech-testing/LRAC-2025-test-data/open-test-set/${track}/clean"
+        else
+            ref_source_dir="multilingual-speech-testing/LRAC-2025-test-data/open-test-set/${track}/reference_${condition}"
+        fi
+
+        wav_scp="${eval_dir}/wav.scp"
+        ref_scp="${eval_dir}/reference.scp"
+
+        # Create wav.scp
+        if [ ! -f "${wav_scp}" ]; then
+            echo "Creating ${wav_scp}..."
+            find "$(pwd)/${source_dir}" -name "*.wav" | sort | while read -r wav_file; do
+                utt_id=$(basename "${wav_file}" .wav)
+                echo "${utt_id} ${wav_file}" >> "${wav_scp}"
+            done
+        else
+            echo "${wav_scp} already exists. Skipping."
+        fi
+
+        # Create reference.scp
+        if [ ! -f "${ref_scp}" ]; then
+            echo "Creating ${ref_scp}..."
+            find "$(pwd)/${ref_source_dir}" -name "*.wav" | sort | while read -r wav_file; do
+                utt_id=$(basename "${wav_file}" .wav)
+                echo "${utt_id} ${wav_file}" >> "${ref_scp}"
+            done
+        else
+            echo "${ref_scp} already exists. Skipping."
+        fi
+    done
+done
+
+
 echo "Data preparation script finished successfully."
 
 ################################################################################
@@ -237,5 +292,23 @@ echo "Data preparation script finished successfully."
 #  |
 #  |- rirs.scp
 #  |- rirs_val.scp
+#  |
+#  |- open_testset_track1_clean/
+#  |   |- wav.scp, reference.scp
+#  |
+#  |- open_testset_track1_noisy/
+#  |   |- wav.scp, reference.scp
+#  |
+#  |- open_testset_track1_reverb/
+#  |   |- wav.scp, reference.scp
+#  |
+#  |- open_testset_track2_clean/
+#  |   |- wav.scp, reference.scp
+#  |
+#  |- open_testset_track2_noisy/
+#  |   |- wav.scp, reference.scp
+#  |
+#  |- open_testset_track2_reverb/
+#  |   |- wav.scp, reference.scp
 #
 ################################################################################
