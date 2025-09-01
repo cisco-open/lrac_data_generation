@@ -186,13 +186,13 @@ fi
 # Combine all noise and RIR data
 if [ ! -e "${output_dir}/tmp/noise_rir.done" ]; then
     echo "Combining noise and RIR files..."
-    cat tmp/dns5_noise_resampled_filtered_curation.scp tmp/wham_noise_resampled_filtered_curation.scp tmp/fsd50k_noise_resampled_filtered_curation.scp tmp/fma_noise_resampled_filtered_curation.scp > "${output_dir}/noise.scp"
+    awk '{print $1, $3}' tmp/dns5_noise_resampled_filtered_curation.scp tmp/wham_noise_resampled_filtered_curation.scp tmp/fsd50k_noise_resampled_filtered_curation.scp tmp/fma_noise_resampled_filtered_curation.scp > "${output_dir}/noise.scp"
     mv tmp/dns5_noise_resampled_filtered_curation.scp tmp/wham_noise_resampled_filtered_curation.scp tmp/fsd50k_noise_resampled_filtered_curation.scp tmp/fma_noise_resampled_filtered_curation.scp "${output_dir}/tmp/"
     python utils/flac2wav.py \
         --input_scp "${output_dir}/noise.scp" \
         --num-workers 8
 
-    cat tmp/dns5_rirs_resampled.scp tmp/motus_rirs_resampled_filtered_curation.scp > "${output_dir}/rirs.scp"
+    awk '{print $1, $3}' tmp/dns5_rirs_resampled.scp tmp/motus_rirs_resampled_filtered_curation.scp > "${output_dir}/rirs.scp"
     mv tmp/dns5_rirs_resampled.scp tmp/motus_rirs_resampled_filtered_curation.scp "${output_dir}/tmp/"
     python utils/flac2wav.py \
         --input_scp "${output_dir}/rirs.scp" \
