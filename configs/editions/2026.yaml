@@ -1,0 +1,89 @@
+schema_version: 1
+edition: "2026"
+description: "Second-edition LRAC data preparation policy"
+seed: 42
+
+audio:
+  sample_rate_hz: 24000
+  channels: 1
+  sample_format: pcm_s16le
+  container: wav
+
+# Retained as the initial public compatibility set. Replace this pinned block
+# with the second-edition public set in a new edition config when it is released.
+public_evaluation:
+  id: lrac-2025-open-evaluation
+  repository_url: https://github.com/cisco/multilingual-speech-testing.git
+  revision: 1a1d300bf2215c49fb562d4d842e42ad617caea9
+  subdirectory: LRAC-2025-test-data/open-test-set
+  tracks: [track_1, track_2]
+  conditions: [clean, noisy, reverb]
+
+datasets:
+  - dns5
+  - ears
+  - fma
+  - fsd50k
+  - globe
+  - libritts
+  - mls
+  - motus
+  - vctk
+  - wham
+
+exclusion_files:
+  - metadata/editions/2026/exclusions.csv
+
+curation_files:
+  - name: dns5-speech-quality
+    dataset: dns5
+    media_kind: speech
+    action: include
+    path: metadata/editions/2026/curation/dns5_speech.csv
+    source_id_column: uid
+  - name: dns5-noise-quality
+    dataset: dns5
+    media_kind: noise
+    action: include
+    path: metadata/editions/2026/curation/dns5_noise.csv
+    source_id_column: uid
+  - name: ears-speech-quality
+    dataset: ears
+    action: include
+    path: metadata/editions/2026/curation/ears_speech.csv
+    source_id_column: uid
+  - name: fma-noise-quality
+    dataset: fma
+    action: include
+    path: metadata/editions/2026/curation/fma_noise.csv
+    source_id_column: uid
+  - name: fsd50k-noise-quality
+    dataset: fsd50k
+    action: include
+    path: metadata/editions/2026/curation/fsd50k_noise.csv
+    source_id_column: uid
+  - name: globe-speech-quality
+    dataset: globe
+    action: include
+    path: metadata/editions/2026/curation/globe_speech.csv
+    source_id_template: "{speaker_id}_{filename_stem}"
+  - name: libritts-speech-quality
+    dataset: libritts
+    action: include
+    path: metadata/editions/2026/curation/libritts_speech.csv
+    source_id_column: uid
+  - name: mls-speech-quality
+    dataset: mls
+    action: include
+    path: metadata/editions/2026/curation/mls_speech.csv
+    source_id_column: uid
+  - name: vctk-speech-quality
+    dataset: vctk
+    action: include
+    path: metadata/editions/2026/curation/vctk_speech.csv
+    source_id_column: uid
+  - name: wham-noise-quality
+    dataset: wham
+    action: include
+    path: metadata/editions/2026/curation/wham_noise.csv
+    source_id_column: uid

@@ -1,0 +1,89 @@
+id: dns5
+adapter: dns5
+release: "5"
+license: "Microsoft DNS Challenge dataset terms (see https://github.com/microsoft/DNS-Challenge)"
+media_kinds: [speech, noise, rir]
+sources:
+  - name: read_speech_parts
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/Track1_Headset/read_speech.tgz.part{suffix}"
+    filename: "read_speech.tgz.part{suffix}"
+    checksum: null
+    options:
+      remote_check_url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/Track1_Headset/read_speech.tgz.partaa"
+      checksums:
+        aa: "md5:33ee573b22acb10972057407fed492a5"
+        ab: "md5:4e9569337fcc274ff42cd63b3da8c9d4"
+        ac: "md5:c0e173d80f7c0df8531b33a9ae0e47b7"
+        ad: "md5:81ff28a8a89a8a0b76184d9c772fa7d5"
+        ae: "md5:687f9fc4c4b1f606af52bd3d609d2a6a"
+        af: "md5:387db3231db352910d50f6ff38eb8e43"
+        ag: "md5:d80793460d938eb580c68d6ebfac64ea"
+        ah: "md5:36ddacdd43049226cef2dac2d2b718da"
+        ai: "md5:3a31b9655abd13a86076426534498ff8"
+        aj: "md5:cff8d804ab3964deacda15220a99a1be"
+        ak: "md5:09a67fdec6f0d72a12938045fa0435b8"
+        al: "md5:e3e89e0d4ddaab70d7489633586f83c4"
+        am: "md5:adc466c955dceceb7a58e8f5ba118e27"
+        an: "md5:0886306e0f3eef5ee6c1e23e043f0226"
+        ao: "md5:a754be7bbdbfed35a120d675c82adb0b"
+        ap: "md5:278622bc064d72b523ef50a6ad5e2e6d"
+        aq: "md5:1694d76bcbada2230666c9dcee79ed27"
+        ar: "md5:7e0abc8e0434eb788cf3ac845583f4c5"
+        as: "md5:a1370b1eb36abfba60a68fd1224adf95"
+        at: "md5:c07174cf2e354ba52ed1d0aaef15124e"
+        au: "md5:5cc05738b708e297e5ecdd35601211b2"
+  - name: noise_audioset_000
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_000.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_000.tar.bz2"
+    checksum: null
+    options: {shard: audioset_000}
+  - name: noise_audioset_001
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_001.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_001.tar.bz2"
+    checksum: null
+    options: {shard: audioset_001}
+  - name: noise_audioset_002
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_002.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_002.tar.bz2"
+    checksum: null
+    options: {shard: audioset_002}
+  - name: noise_audioset_003
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_003.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_003.tar.bz2"
+    checksum: null
+    options: {shard: audioset_003}
+  - name: noise_audioset_004
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_004.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_004.tar.bz2"
+    checksum: null
+    options: {shard: audioset_004}
+  - name: noise_audioset_005
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_005.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_005.tar.bz2"
+    checksum: null
+    options: {shard: audioset_005}
+  - name: noise_audioset_006
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_006.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_006.tar.bz2"
+    checksum: null
+    options: {shard: audioset_006}
+  - name: noise_freesound_000
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.freesound_000.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.freesound_000.tar.bz2"
+    checksum: null
+    options: {shard: freesound_000}
+  - name: noise_freesound_001
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.freesound_001.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.freesound_001.tar.bz2"
+    checksum: null
+    options: {shard: freesound_001}
+  - name: impulse_responses
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/datasets_fullband.impulse_responses_000.tar.bz2"
+    filename: "datasets_fullband.impulse_responses_000.tar.bz2"
+    checksum: null
+expected_files:
+  - "Track1_Headset/mnt/**/*.wav"
+  - "datasets_fullband/noise_fullband/**/*.wav"
+  - "datasets_fullband/impulse_responses/**/*.wav"
+options:
+  speech_part_suffixes: [aa, ab, ac, ad, ae, af, ag, ah, ai, aj, ak, al, am, an, ao, ap, aq, ar, as, at, au]

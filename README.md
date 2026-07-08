@@ -1,59 +1,127 @@
-# Low Resource Audio Codec (LRAC) Challenge 2025
+# LRAC Data Generation
 
+[![CI](https://github.com/cisco-open/lrac_data_generation/actions/workflows/ci.yml/badge.svg)](https://github.com/cisco-open/lrac_data_generation/actions/workflows/ci.yml)
 [![Challenge Website](https://img.shields.io/badge/Challenge-Website-blue)](https://lrac.short.gy/)
 
-This repository contains the official data preparation tools for the **LRAC Challenge**.
+This repository contains the reproducible data preparation pipeline for the Low
+Resource Audio Codec (LRAC) Challenge. The current pipeline describes the 2026
+edition. The original 2025 shell recipe remains available at the
+[`lrac-2025-final`](https://github.com/cisco-open/lrac_data_generation/tree/lrac-2025-final)
+tag and on the `archive/2025` branch.
 
-This repository is a fork of the [URGENT 2025 Challenge repository](https://github.com/urgent-challenge/urgent2025_challenge) and adapts its data preparation scripts and general structure for our challenge.
+The pipeline has two deliberate operating modes:
 
-The goal of the challenge is to develop an audio codec that can compress speech to a very low bitrate while maintaining the highest possible perceptual quality and intelligibility.
+- `plan` resolves and validates local configuration without downloading,
+  extracting, converting, or writing data.
+- `prepare` materializes the complete configured edition. It does not support
+  partial corpora or a storage budget.
 
-## Updates
+## Requirements
 
-❗️❗️**[2025-09-01]** Excluded sampling rate from noise and rir scp files for baseline support
+- Linux
+- Python 3.11 or 3.12
+- [`uv`](https://docs.astral.sh/uv/)
+- `ffmpeg` on `PATH`
+- Info-ZIP `zip` on `PATH` (required to assemble the FSD50K split archive)
+- Access to every corpus configured for the selected edition
 
-❗️❗️**[2025-08-25]** Added lists of files used for the open test set (`datafiles/open_testset`). Added evaluation data preparation for the baseline recipe.
+Install the CLI and preparation dependencies:
 
-❗️❗️**[2025-08-06]** First commit containing the data preparation core functionality.
+```bash
+git clone https://github.com/cisco-open/lrac_data_generation.git
+cd lrac_data_generation
+uv sync --extra prep
+```
 
-## Table of Contents
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Data](#data)
-- [License](#license)
+For development, include the test and static-analysis tools:
 
-## Getting Started
+```bash
+uv sync --extra prep --group dev
+```
 
-### Prerequisites
-*   **OS:** Linux
-*   **Disk Space:** At least **1.2 TB** of free disk space for datasets.
-*   **Dependencies:** `ffmpeg` is required for audio processing.
+## Plan Without Audio
 
-### Installation
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/cisco-open/lrac_data_generation
-    cd lrac_data_generation
-    ```
+Planning is metadata-only and does not create a workspace:
 
-2.  **Download and Prepare the Datasets:** Run the main preparation script. This script automates the entire process:
-    *   It downloads the original large-scale corpora. The downloaded corpora can be accessed in their compressed form in the directory with the same name as the dataset.
-    *   It selects a high-quality subset using our **pre-filtered file lists** to ensure data quality.
-    *   It **resamples** all selected audio to a 24kHz sampling rate for compatibility with the baseline model.
-    *   All final, ready-to-use data is placed in the `./data` directory.
+```bash
+uv run lrac-data plan --edition 2026 --selection curated
+uv run lrac-data plan --edition 2026 --selection uncurated
+```
 
-    ```bash
-    . ./prepare_espnet_data.sh
-    ```
+Add `--check-remote` to issue header-only availability checks for configured
+URLs, including every configured shard of templated sources. Response bodies
+are never downloaded by `plan`. The report also identifies publishers that do
+not provide an archive checksum; successful preparation records the received
+artifact SHA-256 in provenance.
 
-## Data
-The datasets used in the challenge can be found under this link: https://lrac.short.gy/datasets
+`curated` applies the edition's quality allowlists after mandatory validation
+and evaluation exclusions. `uncurated` skips quality allowlists but applies the
+same mandatory exclusions and integrity checks.
 
-The datasets are automatically handled by the `prepare_espnet_data.sh` script.
+## Prepare An Edition
 
+Preparation always processes all datasets in the edition:
 
-All prepared data will be located in the `./data` directory.
+```bash
+uv run lrac-data prepare \
+  --edition 2026 \
+  --selection curated \
+  --workspace /data/lrac \
+  --workers 8
+```
+
+`--workers` bounds concurrent downloads, extraction jobs, checksum work, and
+audio conversion. The default is four; increase it only after measuring the
+target storage and source hosts.
+
+Use `--selection uncurated` to materialize all eligible training items. Stable
+audio IDs allow curated and uncurated manifests to share already prepared
+audio in the same workspace. Reuse is accepted only when the source digest,
+source release, target format, and materializer implementation still match.
+
+Inspect or validate a run:
+
+```bash
+uv run lrac-data status --workspace /data/lrac
+uv run lrac-data validate --workspace /data/lrac --workers 8
+```
+
+Export a completed JSONL manifest for a Kaldi-compatible baseline:
+
+```bash
+uv run lrac-data export-kaldi \
+  --manifest /data/lrac/manifests/2026/curated/train.jsonl \
+  --output /data/lrac/kaldi/curated
+```
+
+Final prepared audio is mono, 24 kHz, PCM16 WAV. A successful run records its
+resolved configuration, source and output digests, tool versions, and counts.
+Interrupted runs retain verified downloads and sharded audio checkpoints for
+resumption. Suspect extractions are rebuilt, and final manifests are published
+only after validation succeeds.
+
+The initial 2026 configuration also materializes the pinned LRAC 2025 public
+open-test set as a compatibility set. Its repository revision and directory are
+declared explicitly in the edition YAML; a newly released second-edition public
+set should be introduced through a new immutable edition configuration.
+
+The checked-in 2026 policy is a migration candidate until the first complete
+build is reviewed. `plan` reports the remaining unpinned upstream checksums and
+inventory-count baselines. A complete candidate run records both in `run.json`
+so they can be frozen in dataset metadata before the edition is accepted.
+
+## Documentation
+
+- [Manifest contract](docs/manifests.md)
+- [Adding a dataset](docs/adding-a-dataset.md)
+- [Reproducing an edition](docs/reproducing-an-edition.md)
+- [2025 historical recipe](docs/history/2025.md)
+
+The datasets and their upstream licenses are listed in the edition and dataset
+configuration. Challenge data information is also available from the
+[LRAC dataset page](https://lrac.short.gy/datasets).
 
 ## License
-This project is licensed under the Apache 2.0 License. See the LICENSE file for details.
+
+The pipeline is licensed under the Apache License 2.0. Individual datasets
+remain subject to their upstream licenses. See [LICENSE](LICENSE).

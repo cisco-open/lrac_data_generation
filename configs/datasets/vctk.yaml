@@ -1,0 +1,13 @@
+id: vctk
+adapter: vctk
+release: "0.92"
+license: "CC BY 4.0"
+media_kinds: [speech]
+sources:
+  - name: corpus
+    url: "https://datashare.ed.ac.uk/download/DS_10283_3443.zip"
+    filename: "DS_10283_3443.zip"
+    checksum: null
+expected_files:
+  - "VCTK-Corpus/wav48_silence_trimmed/**/*.flac"
+  - "VCTK-Corpus/speaker-info.txt"

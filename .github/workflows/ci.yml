@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "edition/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --locked --extra prep --group dev
+
+      - name: Install system audio tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg zip
+
+      - name: Verify system audio tools
+        run: |
+          ffmpeg -version
+          zip -v
+
+      - name: Ruff
+        env:
+          UV_OFFLINE: "1"
+        run: |
+          uv run --frozen --no-sync ruff check src tests
+          uv run --frozen --no-sync ruff format --check src tests
+
+      - name: Mypy
+        env:
+          UV_OFFLINE: "1"
+        run: uv run --frozen --no-sync mypy --python-version ${{ matrix.python-version }}
+
+      - name: Pytest
+        env:
+          UV_OFFLINE: "1"
+          PIP_NO_INDEX: "1"
+        run: uv run --frozen --no-sync pytest

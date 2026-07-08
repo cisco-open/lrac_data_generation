@@ -1,0 +1,19 @@
+id: fma
+adapter: fma
+release: "FMA medium"
+license: "Per-track Creative Commons licenses recorded in FMA metadata"
+media_kinds: [noise]
+sources:
+  - name: metadata
+    url: "https://os.unil.cloud.switch.ch/fma/fma_metadata.zip"
+    filename: "fma_metadata.zip"
+    checksum: "sha1:f0df49ffe5f2a6008d7dc83c6915b31835dfe733"
+    options: {expected: "fma_metadata/**/*"}
+  - name: medium
+    url: "https://os.unil.cloud.switch.ch/fma/fma_medium.zip"
+    filename: "fma_medium.zip"
+    checksum: "sha1:c67b69ea232021025fca9231fc1c7c1a063ab50b"
+    options: {expected: "fma_medium/**/*.mp3"}
+expected_files:
+  - "fma_metadata/**/*"
+  - "fma_medium/**/*.mp3"

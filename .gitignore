@@ -8,6 +8,12 @@ out.txt
 slurm-*.out
 tmp*/
 .eggs/
+*.egg-info/
+.venv/
+.venv-bootstrap/
+/.cache/
+/.tools/
+/benchmark-work/
 .idea
 .pytest_cache/
 __pycache__/
@@ -24,6 +30,15 @@ check_shellcheck*
 *.scp
 du*
 data/
+/build/
+/dist/
+/downloads/
+/extracted/
+/inventories/
+/manifests/
+/prepared/
+/runs/
+/state/
 
 commonvoice/
 datasets_cv11_en/
@@ -43,5 +58,3 @@ wham_noise_48k/
 wsj/
 globe/
 simulation/SC-Wind-Noise-Generator/
-
-!datafiles/*

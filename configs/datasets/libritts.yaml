@@ -1,0 +1,22 @@
+id: libritts
+adapter: libritts
+release: "OpenSLR 60"
+license: "CC BY 4.0"
+media_kinds: [speech]
+sources:
+  - name: train_clean_100
+    url: "https://www.openslr.org/resources/60/train-clean-100.tar.gz"
+    filename: "train-clean-100.tar.gz"
+    checksum: "md5:4a8c202b78fe1bc0c47916a98f3a2ea8"
+    options: {split: train-clean-100}
+  - name: train_clean_360
+    url: "https://www.openslr.org/resources/60/train-clean-360.tar.gz"
+    filename: "train-clean-360.tar.gz"
+    checksum: "md5:a84ef10ddade5fd25df69596a2767b2d"
+    options: {split: train-clean-360}
+expected_files:
+  - "LibriTTS/train-clean-100/**/*.wav"
+  - "LibriTTS/train-clean-360/**/*.wav"
+  - "LibriTTS/speakers.tsv"
+options:
+  splits: [train-clean-100, train-clean-360]

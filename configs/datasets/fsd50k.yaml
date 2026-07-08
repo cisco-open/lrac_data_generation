@@ -1,0 +1,48 @@
+id: fsd50k
+adapter: fsd50k
+release: "Zenodo record 4060432"
+license: "Dataset metadata CC BY 4.0; audio retains per-clip Freesound licenses"
+media_kinds: [noise]
+sources:
+  - name: ground_truth
+    url: "https://zenodo.org/records/4060432/files/FSD50K.ground_truth.zip?download=1"
+    filename: "FSD50K.ground_truth.zip"
+    checksum: "md5:ca27382c195e37d2269c4c866dd73485"
+    options: {extract: true, expected: "FSD50K.ground_truth/**/*"}
+  - name: metadata
+    url: "https://zenodo.org/records/4060432/files/FSD50K.metadata.zip?download=1"
+    filename: "FSD50K.metadata.zip"
+    checksum: "md5:b9ea0c829a411c1d42adb9da539ed237"
+    options: {extract: true, expected: "FSD50K.metadata/**/*"}
+  - name: documentation
+    url: "https://zenodo.org/records/4060432/files/FSD50K.doc.zip?download=1"
+    filename: "FSD50K.doc.zip"
+    checksum: "md5:3516162b82dc2945d3e7feba0904e800"
+    options: {extract: true, expected: "FSD50K.doc/**/*"}
+  - name: audio_zip
+    url: "https://zenodo.org/records/4060432/files/FSD50K.dev_audio.zip?download=1"
+    filename: "FSD50K.dev_audio.zip"
+    checksum: "md5:c480d119b8f7a7e32fdb58f3ea4d6c5a"
+  - name: audio_z01
+    url: "https://zenodo.org/records/4060432/files/FSD50K.dev_audio.z01?download=1"
+    filename: "FSD50K.dev_audio.z01"
+    checksum: "md5:faa7cf4cc076fc34a44a479a5ed862a3"
+  - name: audio_z02
+    url: "https://zenodo.org/records/4060432/files/FSD50K.dev_audio.z02?download=1"
+    filename: "FSD50K.dev_audio.z02"
+    checksum: "md5:8f9b66153e68571164fb1315d00bc7bc"
+  - name: audio_z03
+    url: "https://zenodo.org/records/4060432/files/FSD50K.dev_audio.z03?download=1"
+    filename: "FSD50K.dev_audio.z03"
+    checksum: "md5:1196ef47d267a993d30fa98af54b7159"
+  - name: audio_z04
+    url: "https://zenodo.org/records/4060432/files/FSD50K.dev_audio.z04?download=1"
+    filename: "FSD50K.dev_audio.z04"
+    checksum: "md5:d088ac4e11ba53daf9f7574c11cccac9"
+  - name: audio_z05
+    url: "https://zenodo.org/records/4060432/files/FSD50K.dev_audio.z05?download=1"
+    filename: "FSD50K.dev_audio.z05"
+    checksum: "md5:81356521aa159accd3c35de22da28c7f"
+expected_files:
+  - "FSD50K.dev_audio/**/*.wav"
+  - "FSD50K.ground_truth/**/*"

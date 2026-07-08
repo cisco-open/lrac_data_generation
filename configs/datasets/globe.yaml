@@ -1,0 +1,17 @@
+id: globe
+adapter: globe
+release: "Hugging Face parquet conversion 48deaead69283441dc3f29d38e3c981e9535cc37"
+license: "CC0 1.0"
+media_kinds: [speech]
+sources:
+  - name: parquet_shards
+    url: "https://huggingface.co/datasets/MushanW/globe/resolve/48deaead69283441dc3f29d38e3c981e9535cc37/default/train/{index:04d}.parquet?download=true"
+    filename: "{index:04d}.parquet"
+    checksum: null
+    options:
+      first: 0
+      last: 107
+      remote_check_url: "https://huggingface.co/datasets/MushanW/globe/resolve/48deaead69283441dc3f29d38e3c981e9535cc37/default/train/0000.parquet?download=true"
+expected_files:
+  - "inventory.jsonl"
+  - "train/audio/**/*"

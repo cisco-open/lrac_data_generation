@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lrac-data-generation"
+version = "2.0.0.dev0"
+description = "Reproducible data preparation for the LRAC Challenge"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Cisco Open Source" }]
+dependencies = [
+  "httpx>=0.27,<1",
+  "pydantic>=2.8,<3",
+  "PyYAML>=6.0.2,<7",
+  "typer>=0.12.5,<1",
+]
+
+[project.optional-dependencies]
+prep = [
+  "numpy>=1.26,<3",
+  "pyarrow>=16,<24",
+  "scipy>=1.13,<2",
+  "soundfile>=0.12.1,<1",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.11,<2",
+  "pytest>=8.3,<9",
+  "pytest-cov>=5,<7",
+  "ruff>=0.6,<1",
+  "types-PyYAML>=6.0.12.20240808",
+]
+
+[project.scripts]
+lrac-data = "lrac_data.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/lrac-data" = ["uv.lock"]
+"share/lrac-data/configs/datasets" = ["configs/datasets/*.yaml"]
+"share/lrac-data/configs/editions" = ["configs/editions/*.yaml"]
+"share/lrac-data/metadata/editions/2026" = ["metadata/editions/2026/*.csv"]
+"share/lrac-data/metadata/editions/2026/curation" = ["metadata/editions/2026/curation/*.csv"]
+"share/lrac-data/metadata/editions/2026/evaluation" = ["metadata/editions/2026/evaluation/*.csv"]
+"share/lrac-data/metadata/editions/2026/evaluation/open_testset/track_1" = ["metadata/editions/2026/evaluation/open_testset/track_1/*.csv"]
+"share/lrac-data/metadata/editions/2026/evaluation/open_testset/track_2" = ["metadata/editions/2026/evaluation/open_testset/track_2/*.csv"]
+"share/lrac-data/metadata/editions/2026/sources/mls" = [
+  "metadata/editions/2026/sources/mls/*.gz",
+  "metadata/editions/2026/sources/mls/*.txt",
+]
+"share/lrac-data/metadata/editions/2026/validation" = ["metadata/editions/2026/validation/*.txt"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers -ra"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["lrac_data"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "src"
+files = ["src/lrac_data"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["scipy", "scipy.*", "soundfile"]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

@@ -1,0 +1,20 @@
+id: mls
+adapter: mls
+release: "mls_hq_urgent_track1 c0aa26e3358096014d7b294cd6103d5cc797ea25"
+license: "MLS/LibriVox source terms; see the upstream dataset card"
+media_kinds: [speech]
+sources:
+  - name: track1_shards
+    url: "https://huggingface.co/datasets/kohei0209/mls_hq_urgent_track1/resolve/c0aa26e3358096014d7b294cd6103d5cc797ea25/{path}?download=true"
+    filename: null
+    checksum: null
+    options:
+      remote_check_url: "https://huggingface.co/datasets/kohei0209/mls_hq_urgent_track1/resolve/c0aa26e3358096014d7b294cd6103d5cc797ea25/french/train_track1/audio/62/394.tar.gz?download=true"
+  - name: source_metadata
+    path: "metadata/editions/2026/sources/mls"
+expected_files:
+  - "german/**/*.flac"
+  - "french/**/*.flac"
+  - "spanish/**/*.flac"
+options:
+  languages: [german, french, spanish]

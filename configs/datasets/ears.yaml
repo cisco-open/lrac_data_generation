@@ -1,0 +1,22 @@
+id: ears
+adapter: ears
+release: "audio tag dataset@57259704f24a97447fffcbcec281c52f44886d1c; metadata 613935413a2eac115d191fffc5c74b34ca7cc884"
+license: "CC-NC 4.0 International"
+media_kinds: [speech]
+sources:
+  - name: participants
+    url: "https://github.com/facebookresearch/ears_dataset/releases/download/dataset/{speaker}.zip"
+    filename: "{speaker}.zip"
+    checksum: null
+    options:
+      first: 1
+      last: 107
+      remote_check_url: "https://github.com/facebookresearch/ears_dataset/releases/download/dataset/p001.zip"
+  - name: metadata
+    url: "https://github.com/facebookresearch/ears_dataset/archive/613935413a2eac115d191fffc5c74b34ca7cc884.zip"
+    filename: "ears_dataset-613935413a2eac115d191fffc5c74b34ca7cc884.zip"
+    checksum: null
+expected_files:
+  - "p001/**/*.wav"
+  - "p107/**/*.wav"
+  - "metadata/**/transcripts.json"
