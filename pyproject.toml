@@ -54,7 +54,11 @@ where = ["src"]
   "metadata/editions/2026/sources/mls/*.gz",
   "metadata/editions/2026/sources/mls/*.txt",
 ]
-"share/lrac-data/metadata/editions/2026/validation" = ["metadata/editions/2026/validation/*.txt"]
+"share/lrac-data/metadata/editions/2026/validation" = [
+  "metadata/editions/2026/validation/*.csv",
+  "metadata/editions/2026/validation/*.json",
+  "metadata/editions/2026/validation/*.txt",
+]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers -ra"

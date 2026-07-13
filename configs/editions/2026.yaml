@@ -1,7 +1,7 @@
 schema_version: 1
 edition: "2026"
 description: "Second-edition LRAC data preparation policy"
-seed: 42
+seed: 2026
 
 audio:
   sample_rate_hz: 24000
@@ -33,6 +33,7 @@ datasets:
 
 exclusion_files:
   - metadata/editions/2026/exclusions.csv
+  - metadata/editions/2026/validation/speech_exclusions.csv
 
 curation_files:
   - name: dns5-speech-quality

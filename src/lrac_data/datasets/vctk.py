@@ -39,7 +39,12 @@ class VCTKAdapter(DatasetAdapter):
                 speaker = fields[0]
                 if not speaker.startswith("p"):
                     speaker = f"p{speaker}"
-                genders[speaker] = "f" if fields[2] == "Female" else "m"
+                gender = {"f": "f", "female": "f", "m": "m", "male": "m"}.get(fields[2].casefold())
+                if gender is None:
+                    raise ValueError(
+                        f"{path}: unknown gender {fields[2]!r} for speaker {speaker!r}"
+                    )
+                genders[speaker] = gender
         return genders
 
     def inventory(self) -> list[InventoryItem]:

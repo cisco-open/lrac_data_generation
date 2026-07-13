@@ -74,6 +74,14 @@ class Split(StrEnum):
     EVALUATION = "evaluation"
 
 
+class ExclusionPartition(StrEnum):
+    """How an edition exclusion partitions source inventory."""
+
+    VALIDATION = "validation"
+    EVALUATION = "evaluation"
+    WITHHELD = "withheld"
+
+
 class CurationAction(StrEnum):
     """How a quality curation rule changes its dataset's training inventory."""
 
@@ -183,28 +191,30 @@ class PublicEvaluationSpec(ContractModel):
 
 
 class ExclusionSpec(ContractModel):
-    """Frozen validation or evaluation membership.
+    """Frozen validation, evaluation, or speaker-withholding policy.
 
-    Source IDs select exactly one inventory item.  Speaker IDs select every
-    utterance belonging to that speaker.  ``dataset`` scopes otherwise-local
-    identifiers and should normally be set; an unscoped identifier is accepted
-    only when it resolves unambiguously across the complete inventory.
+    Validation and evaluation use exact source IDs. Withheld exclusions use
+    speaker IDs to keep every non-validation utterance from a selected validation
+    speaker out of training. ``dataset`` scopes otherwise-local identifiers and
+    should normally be set; an unscoped identifier is accepted only when it
+    resolves unambiguously across the complete inventory.
     """
 
     name: Identifier
-    partition: Split
+    partition: ExclusionPartition
     dataset: PathSegment | None = None
     source_ids: tuple[Identifier, ...] = ()
     speaker_ids: tuple[Identifier, ...] = ()
 
     @model_validator(mode="after")
     def validate_exclusion(self) -> ExclusionSpec:
-        if self.partition is Split.TRAIN:
-            raise ValueError("exclusions may target only validation or evaluation")
-        if self.partition is Split.EVALUATION and self.speaker_ids:
-            raise ValueError("evaluation exclusions must use exact source IDs")
         if not self.source_ids and not self.speaker_ids:
             raise ValueError("an exclusion must contain source IDs or speaker IDs")
+        if self.partition is ExclusionPartition.WITHHELD:
+            if self.source_ids:
+                raise ValueError("withheld exclusions must use speaker IDs")
+        elif self.speaker_ids:
+            raise ValueError(f"{self.partition.value} exclusions must use exact source IDs")
         if len(self.source_ids) != len(set(self.source_ids)):
             raise ValueError("source IDs in an exclusion must be unique")
         if len(self.speaker_ids) != len(set(self.speaker_ids)):
@@ -421,6 +431,7 @@ class SelectionResult(ContractModel):
     training: tuple[InventoryItem, ...]
     validation: tuple[InventoryItem, ...]
     evaluation: tuple[InventoryItem, ...]
+    withheld: tuple[InventoryItem, ...] = ()
     quality_rejected: tuple[InventoryItem, ...] = ()
 
     @property
@@ -431,6 +442,7 @@ class SelectionResult(ContractModel):
             "training": len(self.training),
             "validation": len(self.validation),
             "evaluation": len(self.evaluation),
+            "withheld": len(self.withheld),
             "quality_rejected": len(self.quality_rejected),
         }
 
@@ -453,6 +465,7 @@ __all__ = [
     "CurationSpec",
     "DatasetConfig",
     "EditionConfig",
+    "ExclusionPartition",
     "ExclusionSpec",
     "InventoryItem",
     "ManifestItem",

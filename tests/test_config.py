@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from lrac_data.config import ConfigError, load_edition_config
-from lrac_data.models import MediaKind, Split
+from lrac_data.models import ExclusionPartition, MediaKind
 
 
 def _write_config_fixture(root: Path) -> None:
@@ -35,6 +35,7 @@ expected_files: []
         "name,partition,dataset,source_id,speaker_id\n"
         "validation-items,validation,fixture,validation-a,\n"
         "validation-items,validation,fixture,validation-b,\n"
+        "validation-speakers,withheld,fixture,,speaker-a\n"
         "evaluation-items,evaluation,fixture,evaluation-x,\n",
         encoding="utf-8",
     )
@@ -77,14 +78,16 @@ def test_load_edition_expands_curation_csvs_and_groups_exclusions(
         ("spk_a_clip",),
     ]
     assert all(rule.media_kind is MediaKind.SPEECH for rule in loaded.config.curations)
-    assert len(loaded.config.exclusions) == 2
-    assert loaded.config.exclusions[0].partition is Split.VALIDATION
+    assert len(loaded.config.exclusions) == 3
+    assert loaded.config.exclusions[0].partition is ExclusionPartition.VALIDATION
     assert loaded.config.exclusions[0].source_ids == (
         "validation-a",
         "validation-b",
     )
-    assert loaded.config.exclusions[1].partition is Split.EVALUATION
-    assert loaded.config.exclusions[1].source_ids == ("evaluation-x",)
+    assert loaded.config.exclusions[1].partition is ExclusionPartition.WITHHELD
+    assert loaded.config.exclusions[1].speaker_ids == ("speaker-a",)
+    assert loaded.config.exclusions[2].partition is ExclusionPartition.EVALUATION
+    assert loaded.config.exclusions[2].source_ids == ("evaluation-x",)
 
 
 def test_exclusion_csv_requires_the_exact_normalized_header(tmp_path: Path) -> None:

@@ -19,9 +19,9 @@ from lrac_data.models import (
     CurationSpec,
     DatasetConfig,
     EditionConfig,
+    ExclusionPartition,
     ExclusionSpec,
     SelectionMode,
-    Split,
 )
 
 
@@ -342,7 +342,7 @@ def _resolve_exclusions(
             exclusions.append(
                 ExclusionSpec(
                     name=name,
-                    partition=Split(partition),
+                    partition=ExclusionPartition(partition),
                     dataset=dataset,
                     source_ids=tuple(targets["source_ids"]),
                     speaker_ids=tuple(targets["speaker_ids"]),

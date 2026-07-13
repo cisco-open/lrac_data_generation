@@ -54,9 +54,11 @@ are never downloaded by `plan`. The report also identifies publishers that do
 not provide an archive checksum; successful preparation records the received
 artifact SHA-256 in provenance.
 
-`curated` applies the edition's quality allowlists after mandatory validation
-and evaluation exclusions. `uncurated` skips quality allowlists but applies the
-same mandatory exclusions and integrity checks.
+`curated` applies the edition's quality allowlists to training candidates.
+`uncurated` skips those quality allowlists. Both modes use the same frozen,
+exact validation and evaluation IDs. Non-validation speech from validation
+speakers is withheld in both modes, preserving speaker disjointness without
+counting those items as quality failures.
 
 ## Prepare An Edition
 

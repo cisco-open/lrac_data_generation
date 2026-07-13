@@ -7,11 +7,11 @@ import pytest
 
 from lrac_data.models import (
     CurationSpec,
+    ExclusionPartition,
     ExclusionSpec,
     InventoryItem,
     MediaKind,
     SelectionMode,
-    Split,
     qualify_id,
 )
 from lrac_data.selection import SelectionError, select_inventory
@@ -49,14 +49,20 @@ def test_curated_and_uncurated_share_mandatory_exclusions() -> None:
     ]
     exclusions = [
         ExclusionSpec(
-            name="frozen-validation-speaker",
-            partition=Split.VALIDATION,
+            name="frozen-validation-items",
+            partition=ExclusionPartition.VALIDATION,
+            dataset="speech",
+            source_ids=("validation-a",),
+        ),
+        ExclusionSpec(
+            name="frozen-validation-speakers",
+            partition=ExclusionPartition.WITHHELD,
             dataset="speech",
             speaker_ids=("validation-speaker",),
         ),
         ExclusionSpec(
             name="frozen-open-evaluation",
-            partition=Split.EVALUATION,
+            partition=ExclusionPartition.EVALUATION,
             dataset="speech",
             source_ids=("evaluation",),
         ),
@@ -65,7 +71,7 @@ def test_curated_and_uncurated_share_mandatory_exclusions() -> None:
         CurationSpec(
             name="speech-quality-allowlist",
             dataset="speech",
-            source_ids=("quality-keep", "validation-a"),
+            source_ids=("quality-keep",),
         )
     ]
 
@@ -82,17 +88,11 @@ def test_curated_and_uncurated_share_mandatory_exclusions() -> None:
         curations=curations,
     )
 
-    assert _ids(curated.validation) == ("speech:validation-a",)
-    assert _ids(uncurated.validation) == (
-        "speech:validation-a",
-        "speech:validation-b",
-    )
+    assert _ids(curated.validation) == _ids(uncurated.validation) == ("speech:validation-a",)
+    assert _ids(curated.withheld) == _ids(uncurated.withheld) == ("speech:validation-b",)
     assert _ids(curated.evaluation) == _ids(uncurated.evaluation) == ("speech:evaluation",)
     assert _ids(curated.training) == ("speech:quality-keep",)
-    assert _ids(curated.quality_rejected) == (
-        "speech:quality-drop",
-        "speech:validation-b",
-    )
+    assert _ids(curated.quality_rejected) == ("speech:quality-drop",)
     assert _ids(uncurated.training) == (
         "speech:quality-drop",
         "speech:quality-keep",
@@ -116,6 +116,12 @@ def test_exact_and_speaker_exclusions_partition_the_complete_inventory() -> None
                 name="speaker-validation",
                 partition="validation",
                 dataset="speech",
+                source_ids=("speaker-a-1",),
+            ),
+            ExclusionSpec(
+                name="speaker-withheld",
+                partition="withheld",
+                dataset="speech",
                 speaker_ids=("speaker-a",),
             ),
             ExclusionSpec(
@@ -128,10 +134,8 @@ def test_exact_and_speaker_exclusions_partition_the_complete_inventory() -> None
     )
 
     assert _ids(result.training) == ("speech:speaker-b-1",)
-    assert _ids(result.validation) == (
-        "speech:speaker-a-1",
-        "speech:speaker-a-2",
-    )
+    assert _ids(result.validation) == ("speech:speaker-a-1",)
+    assert _ids(result.withheld) == ("speech:speaker-a-2",)
     assert _ids(result.evaluation) == ("rir:rir-1",)
 
 
@@ -204,6 +208,43 @@ def test_duplicate_policy_target_across_exclusions_fails() -> None:
         select_inventory(inventory, exclusions=exclusions)
 
 
+def test_duplicate_speaker_aliases_fail_after_resolution() -> None:
+    inventory = [_item("one", speaker_id="speaker")]
+    exclusions = [
+        ExclusionSpec(
+            name="local",
+            partition="withheld",
+            dataset="speech",
+            speaker_ids=("speaker",),
+        ),
+        ExclusionSpec(
+            name="qualified",
+            partition="withheld",
+            dataset="speech",
+            speaker_ids=("speech:speaker",),
+        ),
+    ]
+
+    with pytest.raises(SelectionError, match="duplicates"):
+        select_inventory(inventory, exclusions=exclusions)
+
+
+def test_validation_speaker_leakage_requires_withholding() -> None:
+    inventory = [
+        _item("validation", speaker_id="speaker"),
+        _item("training", speaker_id="speaker"),
+    ]
+    exclusion = ExclusionSpec(
+        name="validation",
+        partition="validation",
+        dataset="speech",
+        source_ids=("validation",),
+    )
+
+    with pytest.raises(SelectionError, match="validation speakers remain eligible"):
+        select_inventory(inventory, exclusions=[exclusion])
+
+
 def test_unresolved_exclusion_fails_but_uncurated_does_not_resolve_curations() -> None:
     inventory = [_item("known", speaker_id="speaker")]
     exclusion = ExclusionSpec(
@@ -266,7 +307,7 @@ def test_unscoped_source_and_speaker_ids_must_be_unambiguous() -> None:
             exclusions=[
                 ExclusionSpec(
                     name="ambiguous-speaker",
-                    partition="validation",
+                    partition="withheld",
                     speaker_ids=("shared-speaker",),
                 )
             ],

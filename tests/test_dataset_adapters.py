@@ -288,7 +288,7 @@ def test_vctk_inventory_maps_mic_audio_to_shared_transcript(tmp_path: Path) -> N
     transcript.parent.mkdir(parents=True, exist_ok=True)
     transcript.write_text("VCTK fixture.\n", encoding="utf-8")
     (corpus / "speaker-info.txt").write_text(
-        "ID AGE GENDER\n225 23 Female\n232 30 Male\n257 28 Female\n",
+        "ID AGE GENDER\n225 23 F\n232 30 M\n257 28 F\n",
         encoding="utf-8",
     )
 
@@ -304,7 +304,9 @@ def test_vctk_inventory_maps_mic_audio_to_shared_transcript(tmp_path: Path) -> N
     assert by_id["vctk:p225_001_mic2"].text == "VCTK fixture."
     assert by_id["vctk:p225_001_mic2"].gender == "f"
     assert by_id["vctk:p232_001_mic2"].speaker_id == "vctk_p232"
+    assert by_id["vctk:p232_001_mic2"].gender == "m"
     assert by_id["vctk:p257_001_mic2"].speaker_id == "vctk_p257"
+    assert by_id["vctk:p257_001_mic2"].gender == "f"
 
 
 def test_ears_inventory_joins_json_metadata(tmp_path: Path) -> None:

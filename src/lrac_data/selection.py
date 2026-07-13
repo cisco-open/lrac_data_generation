@@ -9,12 +9,12 @@ from dataclasses import dataclass
 from lrac_data.models import (
     CurationAction,
     CurationSpec,
+    ExclusionPartition,
     ExclusionSpec,
     InventoryItem,
     MediaKind,
     SelectionMode,
     SelectionResult,
-    Split,
     qualify_id,
 )
 
@@ -32,11 +32,11 @@ def select_inventory(
 ) -> SelectionResult:
     """Apply frozen split exclusions and optional quality curation.
 
-    Validation and evaluation exclusions are resolved first and are identical in
-    both public selection modes.  Curated mode validates quality rules and applies
-    them to training and validation items; evaluation membership is preserved.
-    Uncurated mode does not inspect quality rules.  The returned tuples are sorted
-    by stable item ID regardless of adapter iteration order.
+    Exact validation and evaluation exclusions are resolved before speaker-level
+    withholding and are identical in both public selection modes. Curated mode
+    applies quality rules only to training candidates. Uncurated mode does not
+    inspect quality rules. The returned tuples are sorted by stable item ID
+    regardless of adapter iteration order.
 
     Raises:
         SelectionError: If inventory IDs are duplicated, an exclusion is invalid,
@@ -58,36 +58,34 @@ def select_inventory(
 
     partition_by_id = _resolve_exclusions(index, exclusions)
 
-    validation_candidates: list[InventoryItem] = []
+    validation: list[InventoryItem] = []
     evaluation: list[InventoryItem] = []
+    withheld: list[InventoryItem] = []
     training_candidates: list[InventoryItem] = []
     for item in items:
         partition = partition_by_id.get(item.id)
-        if partition is Split.VALIDATION:
-            validation_candidates.append(item)
-        elif partition is Split.EVALUATION:
+        if partition is ExclusionPartition.VALIDATION:
+            validation.append(item)
+        elif partition is ExclusionPartition.EVALUATION:
             evaluation.append(item)
+        elif partition is ExclusionPartition.WITHHELD:
+            withheld.append(item)
         else:
             training_candidates.append(item)
 
+    _ensure_validation_speaker_disjointness(validation, training_candidates)
     if mode is SelectionMode.UNCURATED:
         training = training_candidates
-        validation = validation_candidates
         quality_rejected: list[InventoryItem] = []
     else:
         include_by_scope, quality_excluded = _resolve_curations(index, tuple(curations))
         training = []
-        validation = []
         quality_rejected = []
-        for candidates, accepted_items in (
-            (training_candidates, training),
-            (validation_candidates, validation),
-        ):
-            for item in candidates:
-                if _is_curation_eligible(item, include_by_scope, quality_excluded):
-                    accepted_items.append(item)
-                else:
-                    quality_rejected.append(item)
+        for item in training_candidates:
+            if _is_curation_eligible(item, include_by_scope, quality_excluded):
+                training.append(item)
+            else:
+                quality_rejected.append(item)
         quality_rejected.sort(key=lambda item: item.id)
 
     return SelectionResult(
@@ -95,6 +93,7 @@ def select_inventory(
         training=tuple(training),
         validation=tuple(validation),
         evaluation=tuple(evaluation),
+        withheld=tuple(withheld),
         quality_rejected=tuple(quality_rejected),
     )
 
@@ -108,6 +107,27 @@ def _is_curation_eligible(
     if allowlist is None:
         allowlist = include_by_scope.get((item.dataset, None))
     return item.id not in excluded and (allowlist is None or item.id in allowlist)
+
+
+def _ensure_validation_speaker_disjointness(
+    validation: Iterable[InventoryItem],
+    training_candidates: Iterable[InventoryItem],
+) -> None:
+    validation_speakers = {
+        (item.dataset, item.speaker_id) for item in validation if item.speaker_id is not None
+    }
+    training_speakers = {
+        (item.dataset, item.speaker_id)
+        for item in training_candidates
+        if item.speaker_id is not None
+    }
+    leakage = sorted(validation_speakers & training_speakers)
+    if leakage:
+        speakers = ", ".join(qualify_id(dataset, speaker_id) for dataset, speaker_id in leakage)
+        raise SelectionError(
+            "validation speakers remain eligible for training: "
+            f"{speakers}; add speaker-withheld exclusions"
+        )
 
 
 @dataclass(frozen=True)
@@ -162,11 +182,12 @@ def _index_inventory(items: tuple[InventoryItem, ...]) -> _InventoryIndex:
 def _resolve_exclusions(
     index: _InventoryIndex,
     exclusions: tuple[ExclusionSpec, ...],
-) -> dict[str, Split]:
-    partition_by_id: dict[str, Split] = {}
+) -> dict[str, ExclusionPartition]:
+    partition_by_id: dict[str, ExclusionPartition] = {}
     reason_by_id: dict[str, str] = {}
     seen_source_targets: set[tuple[str | None, str]] = set()
     seen_speaker_targets: set[tuple[str | None, str]] = set()
+    seen_speaker_groups: dict[tuple[str, str], str] = {}
 
     for exclusion in exclusions:
         for target in exclusion.source_ids:
@@ -185,6 +206,7 @@ def _resolve_exclusions(
                 reason_by_id,
             )
 
+    for exclusion in exclusions:
         for target in exclusion.speaker_ids:
             key = (exclusion.dataset, target)
             if key in seen_speaker_targets:
@@ -192,7 +214,23 @@ def _resolve_exclusions(
                     f"duplicate speaker exclusion {target!r} in dataset {exclusion.dataset!r}"
                 )
             seen_speaker_targets.add(key)
-            matches = _resolve_speaker(index, target, exclusion.dataset)
+            resolved = _resolve_speaker(index, target, exclusion.dataset)
+            speaker_id = resolved[0].speaker_id
+            assert speaker_id is not None
+            resolved_key = (resolved[0].dataset, speaker_id)
+            previous_target = seen_speaker_groups.get(resolved_key)
+            if previous_target is not None:
+                raise SelectionError(
+                    f"speaker exclusion {target!r} duplicates {previous_target!r}; "
+                    f"both resolve to {qualify_id(*resolved_key)!r}"
+                )
+            seen_speaker_groups[resolved_key] = target
+            matches = tuple(
+                item
+                for item in resolved
+                if partition_by_id.get(item.id)
+                not in {ExclusionPartition.VALIDATION, ExclusionPartition.EVALUATION}
+            )
             _assign_partition(
                 matches,
                 exclusion.partition,
@@ -206,9 +244,9 @@ def _resolve_exclusions(
 
 def _assign_partition(
     matches: tuple[InventoryItem, ...],
-    partition: Split,
+    partition: ExclusionPartition,
     reason: str,
-    partition_by_id: dict[str, Split],
+    partition_by_id: dict[str, ExclusionPartition],
     reason_by_id: dict[str, str],
 ) -> None:
     for item in matches:

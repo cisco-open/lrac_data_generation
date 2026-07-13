@@ -21,6 +21,7 @@ from typing import Any, TypeVar
 
 from . import __version__
 from . import audio as audio_module
+from . import models as models_module
 from .audio import (
     AudioMetadata,
     MaterializationTask,
@@ -632,7 +633,6 @@ def _inventory_implementation_fingerprint(repo_root: Path, adapter: str) -> str:
     """Fingerprint code that can change normalized source inventory semantics."""
 
     component_paths = [
-        "models.py",
         "manifests.py",
         "datasets/base.py",
         "datasets/common.py",
@@ -641,7 +641,18 @@ def _inventory_implementation_fingerprint(repo_root: Path, adapter: str) -> str:
     ]
     return fingerprint(
         {
-            "schema_version": 1,
+            "schema_version": 3,
+            "inventory_contract": {
+                "schema": InventoryItem.model_json_schema(),
+                "source": fingerprint(
+                    {
+                        "base": inspect.getsource(models_module.ContractModel),
+                        "inventory": inspect.getsource(InventoryItem),
+                        "safe_path_segment": inspect.getsource(models_module._safe_path_segment),
+                        "qualify_id": inspect.getsource(models_module.qualify_id),
+                    }
+                ),
+            },
             "extraction_format": EXTRACTION_FORMAT_VERSION,
             "source_artifact_format": SOURCE_ARTIFACT_FORMAT_VERSION,
             "pipeline": _callable_fingerprint(

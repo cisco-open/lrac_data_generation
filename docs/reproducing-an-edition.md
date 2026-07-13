@@ -26,6 +26,57 @@ downloaded artifact digest in `run.json`. Those values must be reviewed and
 copied into the dataset metadata before declaring the 2026 corpus accepted;
 until then the edition branch is a build candidate, not a frozen data release.
 
+## Frozen 2026 Speech Split
+
+The 2026 edition freezes validation membership by exact source ID in
+`metadata/editions/2026/validation/speech_exclusions.csv`. The same 1,550
+utterances are validation data in curated and uncurated builds:
+
+| Source | Validation items |
+| --- | ---: |
+| DNS5 | 250 |
+| EARS | 250 |
+| GLOBE | 250 |
+| LibriTTS | 250 |
+| VCTK | 250 |
+| MLS French | 100 |
+| MLS German | 100 |
+| MLS Spanish | 100 |
+
+The edition seed is `2026`. Validation candidates are canonicalized by
+dataset-qualified source checksum; checksum aliases must have identical speech
+metadata, and the lexical source ID represents the audio. The result contains
+1,550 byte-unique validation clips.
+
+Candidate speakers have at most 250 curated utterances and are ordered with a
+namespaced SHA-256 key. Each speaker contributes at most 25 validation items.
+The policy requires at least 10 DNS5 speakers, five speakers in each
+known-gender stratum, and four speakers in each MLS language stratum.
+Known-gender sources use equal female and male targets. The canonical source-ID
+checksum is
+`824215a59c6a0e23e73caa7393ce3d12cd0533ff79875c4613c6842b8e9fd49a`;
+the dataset-qualified audio-identity checksum is
+`ae72456c625cf04caa6b9cd711c41eab85eac1d9661266ea13d6c1810edb7a0c`.
+
+All non-validation utterances belonging to the 125 selected speakers are
+classified as `withheld`, not as quality rejections. The validated inventory
+contains 18,164 such items in either mode; 3,695 of them would otherwise pass
+the curated allowlists and enter curated training. This keeps every training
+manifest speaker-disjoint from validation. Exact validation and evaluation
+assignments take precedence over speaker withholding.
+
+The checked-in split is generated only when edition policy changes:
+
+```bash
+uv run python tools/freeze_validation_speech.py --workspace /data/lrac
+uv run python tools/freeze_validation_speech.py --workspace /data/lrac --check
+```
+
+The tool reads completed normalized inventories, applies the edition's curated
+training policy after removing any previous speech-validation rules, and writes
+the frozen CSV plus `speech_split.json`. Normal preparation never samples a
+split; it only consumes those reviewed artifacts.
+
 ## Complete Build
 
 Choose a workspace outside the source checkout and run one complete selection:

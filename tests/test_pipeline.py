@@ -226,12 +226,14 @@ curations:
         "training": 1,
         "validation": 1,
         "evaluation": 1,
+        "withheld": 0,
         "quality_rejected": 1,
     }
     assert uncurated.counts == {
         "training": 2,
         "validation": 1,
         "evaluation": 1,
+        "withheld": 0,
         "quality_rejected": 0,
     }
     assert FixtureAdapter.fetch_calls == 1
@@ -402,6 +404,8 @@ class {adapter.title()}Adapter:
     (package / "cli.py").write_text("changed CLI", encoding="utf-8")
     assert _audio_implementation_fingerprint(tmp_path, "ffmpeg fixture") == audio_before
     assert _inventory_implementation_fingerprint(tmp_path, "dns5") == dns_before
+    (package / "models.py").write_text("changed selection policy", encoding="utf-8")
+    assert _inventory_implementation_fingerprint(tmp_path, "dns5") == dns_before
 
     with (package / "audio.py").open("a", encoding="utf-8") as stream:
         stream.write("\ndef unrelated_cache_change():\n    return 2\n")
@@ -429,6 +433,14 @@ class {adapter.title()}Adapter:
     assert _inventory_implementation_fingerprint(tmp_path, "fsd50k") != fsd50k_before
     assert _inventory_implementation_fingerprint(tmp_path, "dns5") != dns_after_adapter_change
     assert _inventory_implementation_fingerprint(tmp_path, "ears") != ears_before
+    contract_before = _inventory_implementation_fingerprint(tmp_path, "ears")
+    schema = pipeline_module.InventoryItem.model_json_schema()
+    monkeypatch.setattr(
+        pipeline_module.InventoryItem,
+        "model_json_schema",
+        classmethod(lambda _cls: {**schema, "title": "changed inventory contract"}),
+    )
+    assert _inventory_implementation_fingerprint(tmp_path, "ears") != contract_before
 
 
 def test_audio_fingerprint_includes_channel_average_policy(

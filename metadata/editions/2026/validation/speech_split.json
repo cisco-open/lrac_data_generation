@@ -1,0 +1,483 @@
+{
+  "edition": "2026",
+  "input": {
+    "curated_speech_identity_sha256": "d4f263d4224209b52dc0469239959a96930e0ed6e98aef4a2fea820165e2ac39",
+    "curated_speech_items": 342557
+  },
+  "policy": {
+    "audio_alias_contract": "checksum aliases must have identical speech metadata",
+    "audio_deduplication": "one lexical source ID per dataset-qualified source checksum",
+    "hash_namespace": "lrac-2026-validation-v1",
+    "item_order": "sha256(NUL-joined namespace, seed, item, stratum, source_id)",
+    "maximum_curated_items_per_speaker": 250,
+    "seed": 2026,
+    "speaker_disjointness": "withhold every non-validation item from selected speakers",
+    "speaker_order": "sha256(NUL-joined namespace, seed, speaker, stratum, speaker_id)",
+    "strata": [
+      {
+        "contribution_cap": 25,
+        "dataset": "dns5",
+        "gender": null,
+        "language": null,
+        "minimum_speakers": 10,
+        "name": "dns5",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "ears",
+        "gender": "f",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "ears/f",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "ears",
+        "gender": "m",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "ears/m",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "globe",
+        "gender": "f",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "globe/f",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "globe",
+        "gender": "m",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "globe/m",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "libritts",
+        "gender": "f",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "libritts/f",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "libritts",
+        "gender": "m",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "libritts/m",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "vctk",
+        "gender": "f",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "vctk/f",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "vctk",
+        "gender": "m",
+        "language": null,
+        "minimum_speakers": 5,
+        "name": "vctk/m",
+        "target": 125
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "mls",
+        "gender": null,
+        "language": "french",
+        "minimum_speakers": 4,
+        "name": "mls/french",
+        "target": 100
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "mls",
+        "gender": null,
+        "language": "german",
+        "minimum_speakers": 4,
+        "name": "mls/german",
+        "target": 100
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "mls",
+        "gender": null,
+        "language": "spanish",
+        "minimum_speakers": 4,
+        "name": "mls/spanish",
+        "target": 100
+      }
+    ]
+  },
+  "result": {
+    "allocations": [
+      {
+        "selected_speakers": [
+          "dns5_reader_08647",
+          "dns5_reader_06922",
+          "dns5_reader_00453",
+          "dns5_reader_00251",
+          "dns5_reader_05490",
+          "dns5_reader_04987",
+          "dns5_reader_10435",
+          "dns5_reader_04436",
+          "dns5_reader_10097",
+          "dns5_reader_00097",
+          "dns5_reader_09841",
+          "dns5_reader_02995",
+          "dns5_reader_10063",
+          "dns5_reader_05933",
+          "dns5_reader_11144",
+          "dns5_reader_09192",
+          "dns5_reader_09720",
+          "dns5_reader_07471",
+          "dns5_reader_01592",
+          "dns5_reader_00140",
+          "dns5_reader_02616",
+          "dns5_reader_06930",
+          "dns5_reader_03915"
+        ],
+        "stratum": "dns5",
+        "target_source_ids": 250,
+        "validation_items_per_speaker": {
+          "dns5_reader_00097": 1,
+          "dns5_reader_00140": 25,
+          "dns5_reader_00251": 16,
+          "dns5_reader_00453": 7,
+          "dns5_reader_01592": 13,
+          "dns5_reader_02616": 25,
+          "dns5_reader_02995": 8,
+          "dns5_reader_03915": 13,
+          "dns5_reader_04436": 7,
+          "dns5_reader_04987": 2,
+          "dns5_reader_05490": 25,
+          "dns5_reader_05933": 1,
+          "dns5_reader_06922": 18,
+          "dns5_reader_06930": 2,
+          "dns5_reader_07471": 22,
+          "dns5_reader_08647": 1,
+          "dns5_reader_09192": 8,
+          "dns5_reader_09720": 10,
+          "dns5_reader_09841": 5,
+          "dns5_reader_10063": 16,
+          "dns5_reader_10097": 1,
+          "dns5_reader_10435": 15,
+          "dns5_reader_11144": 9
+        }
+      },
+      {
+        "selected_speakers": [
+          "ears_p098",
+          "ears_p024",
+          "ears_p083",
+          "ears_p052",
+          "ears_p053"
+        ],
+        "stratum": "ears/f",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "ears_p024": 25,
+          "ears_p052": 25,
+          "ears_p053": 25,
+          "ears_p083": 25,
+          "ears_p098": 25
+        }
+      },
+      {
+        "selected_speakers": [
+          "ears_p025",
+          "ears_p004",
+          "ears_p019",
+          "ears_p094",
+          "ears_p040"
+        ],
+        "stratum": "ears/m",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "ears_p004": 25,
+          "ears_p019": 25,
+          "ears_p025": 25,
+          "ears_p040": 25,
+          "ears_p094": 25
+        }
+      },
+      {
+        "selected_speakers": [
+          "globe_S_015178",
+          "globe_S_020786",
+          "globe_S_011749",
+          "globe_S_011345",
+          "globe_S_004838",
+          "globe_S_012658",
+          "globe_S_001694",
+          "globe_S_014539",
+          "globe_S_002195",
+          "globe_S_013961",
+          "globe_S_003000",
+          "globe_S_012150",
+          "globe_S_017594",
+          "globe_S_009901",
+          "globe_S_020109",
+          "globe_S_007363",
+          "globe_S_004831",
+          "globe_S_004982",
+          "globe_S_022024",
+          "globe_S_017542",
+          "globe_S_011930"
+        ],
+        "stratum": "globe/f",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "globe_S_001694": 2,
+          "globe_S_002195": 25,
+          "globe_S_003000": 16,
+          "globe_S_004831": 2,
+          "globe_S_004838": 13,
+          "globe_S_004982": 1,
+          "globe_S_007363": 4,
+          "globe_S_009901": 8,
+          "globe_S_011345": 2,
+          "globe_S_011749": 5,
+          "globe_S_011930": 17,
+          "globe_S_012150": 4,
+          "globe_S_012658": 1,
+          "globe_S_013961": 2,
+          "globe_S_014539": 5,
+          "globe_S_015178": 4,
+          "globe_S_017542": 2,
+          "globe_S_017594": 2,
+          "globe_S_020109": 2,
+          "globe_S_020786": 5,
+          "globe_S_022024": 3
+        }
+      },
+      {
+        "selected_speakers": [
+          "globe_S_009023",
+          "globe_S_014727",
+          "globe_S_002045",
+          "globe_S_021509",
+          "globe_S_011428",
+          "globe_S_001790",
+          "globe_S_018190",
+          "globe_S_000263",
+          "globe_S_000264",
+          "globe_S_000357",
+          "globe_S_007779",
+          "globe_S_013359",
+          "globe_S_006389",
+          "globe_S_009746",
+          "globe_S_006612",
+          "globe_S_012016",
+          "globe_S_017730",
+          "globe_S_008330",
+          "globe_S_000550",
+          "globe_S_019532",
+          "globe_S_011785",
+          "globe_S_009062",
+          "globe_S_003293",
+          "globe_S_016919",
+          "globe_S_020584",
+          "globe_S_010286",
+          "globe_S_022285",
+          "globe_S_002562"
+        ],
+        "stratum": "globe/m",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "globe_S_000263": 12,
+          "globe_S_000264": 1,
+          "globe_S_000357": 4,
+          "globe_S_000550": 1,
+          "globe_S_001790": 1,
+          "globe_S_002045": 1,
+          "globe_S_002562": 15,
+          "globe_S_003293": 7,
+          "globe_S_006389": 18,
+          "globe_S_006612": 3,
+          "globe_S_007779": 4,
+          "globe_S_008330": 1,
+          "globe_S_009023": 1,
+          "globe_S_009062": 3,
+          "globe_S_009746": 1,
+          "globe_S_010286": 1,
+          "globe_S_011428": 1,
+          "globe_S_011785": 1,
+          "globe_S_012016": 1,
+          "globe_S_013359": 2,
+          "globe_S_014727": 1,
+          "globe_S_016919": 25,
+          "globe_S_017730": 1,
+          "globe_S_018190": 2,
+          "globe_S_019532": 1,
+          "globe_S_020584": 1,
+          "globe_S_021509": 13,
+          "globe_S_022285": 2
+        }
+      },
+      {
+        "selected_speakers": [
+          "libritts_8545",
+          "libritts_4145",
+          "libritts_337",
+          "libritts_6378",
+          "libritts_225",
+          "libritts_54"
+        ],
+        "stratum": "libritts/f",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "libritts_225": 25,
+          "libritts_337": 16,
+          "libritts_4145": 19,
+          "libritts_54": 21,
+          "libritts_6378": 25,
+          "libritts_8545": 19
+        }
+      },
+      {
+        "selected_speakers": [
+          "libritts_5293",
+          "libritts_459",
+          "libritts_512",
+          "libritts_8008",
+          "libritts_1349",
+          "libritts_7258",
+          "libritts_1849",
+          "libritts_8028",
+          "libritts_6690",
+          "libritts_369"
+        ],
+        "stratum": "libritts/m",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "libritts_1349": 25,
+          "libritts_1849": 5,
+          "libritts_369": 16,
+          "libritts_459": 25,
+          "libritts_512": 12,
+          "libritts_5293": 25,
+          "libritts_6690": 1,
+          "libritts_7258": 7,
+          "libritts_8008": 3,
+          "libritts_8028": 6
+        }
+      },
+      {
+        "selected_speakers": [
+          "vctk_p228",
+          "vctk_p293",
+          "vctk_p262",
+          "vctk_p240",
+          "vctk_p233"
+        ],
+        "stratum": "vctk/f",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "vctk_p228": 25,
+          "vctk_p233": 25,
+          "vctk_p240": 25,
+          "vctk_p262": 25,
+          "vctk_p293": 25
+        }
+      },
+      {
+        "selected_speakers": [
+          "vctk_p273",
+          "vctk_p263",
+          "vctk_p227",
+          "vctk_p285",
+          "vctk_p279"
+        ],
+        "stratum": "vctk/m",
+        "target_source_ids": 125,
+        "validation_items_per_speaker": {
+          "vctk_p227": 25,
+          "vctk_p263": 25,
+          "vctk_p273": 25,
+          "vctk_p279": 25,
+          "vctk_p285": 25
+        }
+      },
+      {
+        "selected_speakers": [
+          "11954",
+          "5232",
+          "5525",
+          "2776",
+          "8582"
+        ],
+        "stratum": "mls/french",
+        "target_source_ids": 100,
+        "validation_items_per_speaker": {
+          "11954": 6,
+          "2776": 21,
+          "5232": 25,
+          "5525": 25,
+          "8582": 23
+        }
+      },
+      {
+        "selected_speakers": [
+          "7479",
+          "3631",
+          "10614",
+          "7998",
+          "3759",
+          "9515"
+        ],
+        "stratum": "mls/german",
+        "target_source_ids": 100,
+        "validation_items_per_speaker": {
+          "10614": 1,
+          "3631": 11,
+          "3759": 25,
+          "7479": 15,
+          "7998": 25,
+          "9515": 23
+        }
+      },
+      {
+        "selected_speakers": [
+          "12367",
+          "675",
+          "8677",
+          "10982",
+          "1447",
+          "3290"
+        ],
+        "stratum": "mls/spanish",
+        "target_source_ids": 100,
+        "validation_items_per_speaker": {
+          "10982": 7,
+          "12367": 25,
+          "1447": 19,
+          "3290": 25,
+          "675": 1,
+          "8677": 23
+        }
+      }
+    ],
+    "unique_validation_source_checksums": 1550,
+    "validation_audio_identity_sha256": "ae72456c625cf04caa6b9cd711c41eab85eac1d9661266ea13d6c1810edb7a0c",
+    "validation_source_id_sha256": "824215a59c6a0e23e73caa7393ce3d12cd0533ff79875c4613c6842b8e9fd49a",
+    "validation_source_ids": 1550,
+    "withheld_speakers": 125
+  },
+  "schema_version": 1
+}
