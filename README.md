@@ -107,10 +107,11 @@ open-test set as a compatibility set. Its repository revision and directory are
 declared explicitly in the edition YAML; a newly released second-edition public
 set should be introduced through a new immutable edition configuration.
 
-The checked-in 2026 policy is a migration candidate until the first complete
-build is reviewed. `plan` reports the remaining unpinned upstream checksums and
-inventory-count baselines. A complete candidate run records both in `run.json`
-so they can be frozen in dataset metadata before the edition is accepted.
+The checked-in 2026 policy pins every production artifact checksum and canonical
+normalized inventory count from the accepted complete build. Preparation fails
+if an upstream artifact changes or a dataset inventory is incomplete. The pre-freeze
+complete run keeps its original configuration fingerprint as comparison provenance;
+it is not silently rewritten as a final frozen-edition publication.
 
 ## Documentation
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import fcntl
 import importlib.util
-import inspect
 import json
 import os
 import shutil
@@ -16,12 +15,10 @@ from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import Any, TypeVar
 
 from . import __version__
-from . import audio as audio_module
-from . import models as models_module
 from .audio import (
     AudioMetadata,
     MaterializationTask,
@@ -29,13 +26,14 @@ from .audio import (
     materialize_all,
     output_path,
 )
-from .config import LoadedEdition, load_edition_config
+from .config import LoadedEdition, load_edition_config, portable_config_payload
 from .datasets import create_adapter
-from .datasets.io import EXTRACTION_FORMAT_VERSION, trusted_file_sha256
-from .manifests import read_jsonl, write_jsonl, write_manifest
+from .datasets.io import trusted_file_sha256
+from .manifests import read_jsonl, write_jsonl, write_ordered_manifest
 from .models import (
     InventoryItem,
     ManifestItem,
+    PublishedRunMetadata,
     SelectionMode,
     SelectionResult,
     Split,
@@ -110,7 +108,7 @@ class PrepareResult:
 
 
 ProgressCallback = Callable[[str], None]
-SOURCE_ARTIFACT_FORMAT_VERSION = 1
+_MATERIALIZATION_CHUNK_SIZE = 4096
 InputT = TypeVar("InputT")
 OutputT = TypeVar("OutputT")
 
@@ -184,11 +182,19 @@ def _prepare_edition_unlocked(
     code_fingerprint = _implementation_fingerprint(loaded.repo_root)
     dependency_lock_digest = _optional_digest(loaded.repo_root / "uv.lock")
     environment = environment_provenance(loaded.repo_root)
-    tool_versions = {name: environment[name] for name in ("python", "ffmpeg", "git", "zip")}
+    execution_identity = {
+        name: environment[name] for name in ("python", "ffmpeg", "git", "zip", "packages")
+    }
+    inventory_runtime_identity = {
+        name: environment[name] for name in ("python", "git", "zip", "packages")
+    }
+    audio_runtime_identity = {name: environment[name] for name in ("python", "ffmpeg", "packages")}
     audio_implementation_fingerprint = _audio_implementation_fingerprint(
-        loaded.repo_root, environment["ffmpeg"]
+        loaded.repo_root,
+        audio_runtime_identity,
+        dependency_lock_digest,
     )
-    config_payload = _portable_config_payload(loaded)
+    config_payload = portable_config_payload(loaded)
     local_source_inputs = {
         dataset.id: _local_source_fingerprints(dataset.sources)
         for dataset in loaded.config.datasets
@@ -200,7 +206,7 @@ def _prepare_edition_unlocked(
             "local_source_inputs": local_source_inputs,
             "implementation": code_fingerprint,
             "dependency_lock": dependency_lock_digest,
-            "tool_versions": tool_versions,
+            "execution_identity": execution_identity,
             "version": __version__,
         }
     )
@@ -231,7 +237,10 @@ def _prepare_edition_unlocked(
         sources_path = layout.inventories / f"{dataset.id}.sources.json"
         stage_key = f"inventory-{dataset.id}"
         inventory_implementation_fingerprint = _inventory_implementation_fingerprint(
-            loaded.repo_root, dataset.adapter
+            loaded.repo_root,
+            dataset.adapter,
+            runtime_identity=inventory_runtime_identity,
+            dependency_lock_digest=dependency_lock_digest,
         )
         stage_fingerprint = fingerprint(
             {
@@ -402,11 +411,20 @@ def _prepare_edition_unlocked(
     run_state.mark_running("prepare", run_fingerprint)
 
     validation_started = time.monotonic()
+    expected_manifest_counts = {
+        Split.TRAIN.value: len(selected.training),
+        Split.VALIDATION.value: len(selected.validation),
+        Split.EVALUATION.value: len(selected.evaluation),
+    }
+    if loaded.config.public_evaluation is not None:
+        expected_manifest_counts["open-evaluation"] = public_evaluation_count
     validation = validate_manifests(
         list(staged.values()),
         workspace=layout.root,
         verify_checksums=True,
         known_audio=known_audio,
+        expected_counts=expected_manifest_counts,
+        target_audio=loaded.config.audio,
         workers=workers,
     )
     if not validation.ok:
@@ -416,7 +434,7 @@ def _prepare_edition_unlocked(
     emit("Manifest validation complete")
 
     counts = dict(selected.counts)
-    if public_evaluation_count:
+    if loaded.config.public_evaluation is not None:
         counts["open_evaluation"] = public_evaluation_count
     run_metadata = {
         "schema_version": 1,
@@ -453,11 +471,14 @@ def _prepare_edition_unlocked(
         },
         "environment": environment,
     }
+    validated_run_metadata = PublishedRunMetadata.model_validate(run_metadata).model_dump(
+        mode="json"
+    )
     run_metadata_path = run_dir / "run.json"
-    atomic_write_text(run_metadata_path, f"{canonical_json(run_metadata)}\n")
+    atomic_write_text(run_metadata_path, f"{canonical_json(validated_run_metadata)}\n")
     published = _publish_manifest_set(
         staged,
-        run_metadata,
+        validated_run_metadata,
         destination=layout.manifests / loaded.config.edition / mode.value,
         run_id=run_id,
     )
@@ -523,16 +544,19 @@ def _materialize_selection(
     if loaded.config.public_evaluation is not None:
         public_root = fetch_public_evaluation(loaded.config.public_evaluation, layout.root)
         public_items = tuple(
-            _attach_source_checksums(
-                inventory_public_evaluation(loaded.config.public_evaluation, public_root),
-                workers=workers,
-                cache_path=_workspace_descendant(
-                    layout.state
-                    / "source-checksums"
-                    / f"{loaded.config.public_evaluation.id}.json",
-                    layout.state,
-                    label="public evaluation source checksum cache",
+            sorted(
+                _attach_source_checksums(
+                    inventory_public_evaluation(loaded.config.public_evaluation, public_root),
+                    workers=workers,
+                    cache_path=_workspace_descendant(
+                        layout.state
+                        / "source-checksums"
+                        / f"{loaded.config.public_evaluation.id}.json",
+                        layout.state,
+                        label="public evaluation source checksum cache",
+                    ),
                 ),
+                key=lambda item: item.id,
             )
         )
         write_jsonl(
@@ -542,54 +566,72 @@ def _materialize_selection(
         partitions["open-evaluation"] = (Split.EVALUATION, public_items)
         public_evaluation_count = len(public_items)
 
-    all_items = tuple(item for _split, items in partitions.values() for item in items)
-    tasks = [
-        MaterializationTask(
-            source=item.source_path,
-            destination=_prepared_path(
-                item,
-                loaded=loaded,
-                layout=layout,
-                implementation_fingerprint=implementation_fingerprint,
-            ),
-            sample_rate_hz=loaded.config.audio.sample_rate_hz,
-            channels=loaded.config.audio.channels,
-            source_release=item.source_release,
-            implementation_fingerprint=implementation_fingerprint,
-            source_sha256=item.source_checksum,
-        )
-        for item in all_items
-    ]
-    metadata_by_path = {
-        metadata.path: metadata for metadata in materialize_all(tasks, workers=workers)
-    }
-
+    metadata_by_path: dict[Path, AudioMetadata] = {}
     manifests: dict[str, Path] = {}
     for name, (split, items) in partitions.items():
-        records: list[ManifestItem] = []
-        for item in items:
-            destination = _prepared_path(
+        path = staging_dir / f"{name}.jsonl"
+        records = _materialized_manifest_records(
+            items,
+            split=split,
+            loaded=loaded,
+            layout=layout,
+            workers=workers,
+            implementation_fingerprint=implementation_fingerprint,
+            metadata_by_path=metadata_by_path,
+        )
+        write_ordered_manifest(path, records)
+        manifests[name] = path
+    return manifests, public_evaluation_count, metadata_by_path
+
+
+def _materialized_manifest_records(
+    items: tuple[InventoryItem, ...],
+    *,
+    split: Split,
+    loaded: LoadedEdition,
+    layout: WorkspaceLayout,
+    workers: int,
+    implementation_fingerprint: str,
+    metadata_by_path: dict[Path, AudioMetadata],
+) -> Iterator[ManifestItem]:
+    for start in range(0, len(items), _MATERIALIZATION_CHUNK_SIZE):
+        chunk = items[start : start + _MATERIALIZATION_CHUNK_SIZE]
+        destinations = [
+            _prepared_path(
                 item,
                 loaded=loaded,
                 layout=layout,
                 implementation_fingerprint=implementation_fingerprint,
             )
-            metadata = metadata_by_path[destination]
-            records.append(
-                ManifestItem.from_inventory(
-                    item,
-                    audio_path=destination.relative_to(layout.root).as_posix(),
-                    split=split,
-                    sample_rate_hz=metadata.sample_rate_hz,
-                    channels=metadata.channels,
-                    frame_count=metadata.num_frames,
-                    checksum=metadata.sha256,
-                )
+            for item in chunk
+        ]
+        tasks = [
+            MaterializationTask(
+                source=item.source_path,
+                destination=destination,
+                sample_rate_hz=loaded.config.audio.sample_rate_hz,
+                channels=loaded.config.audio.channels,
+                source_release=item.source_release,
+                implementation_fingerprint=implementation_fingerprint,
+                source_sha256=item.source_checksum,
             )
-        path = staging_dir / f"{name}.jsonl"
-        write_manifest(path, records)
-        manifests[name] = path
-    return manifests, public_evaluation_count, metadata_by_path
+            for item, destination in zip(chunk, destinations, strict=True)
+        ]
+        chunk_metadata = {
+            metadata.path: metadata for metadata in materialize_all(tasks, workers=workers)
+        }
+        metadata_by_path.update(chunk_metadata)
+        for item, destination in zip(chunk, destinations, strict=True):
+            metadata = chunk_metadata[destination]
+            yield ManifestItem.from_inventory(
+                item,
+                audio_path=destination.relative_to(layout.root).as_posix(),
+                split=split,
+                sample_rate_hz=metadata.sample_rate_hz,
+                channels=metadata.channels,
+                frame_count=metadata.num_frames,
+                checksum=metadata.sha256,
+            )
 
 
 def _prepared_path(
@@ -629,74 +671,64 @@ def _implementation_fingerprint(repo_root: Path) -> str:
     return fingerprint(payload)
 
 
-def _inventory_implementation_fingerprint(repo_root: Path, adapter: str) -> str:
-    """Fingerprint code that can change normalized source inventory semantics."""
+def _inventory_implementation_fingerprint(
+    repo_root: Path,
+    adapter: str,
+    *,
+    runtime_identity: Any = None,
+    dependency_lock_digest: str | None = None,
+) -> str:
+    """Fingerprint complete modules and runtime inputs used by inventory stages."""
 
     component_paths = [
+        "pipeline.py",
+        "models.py",
         "manifests.py",
+        "state.py",
+        "datasets/__init__.py",
         "datasets/base.py",
         "datasets/common.py",
         "datasets/inventory.py",
+        "datasets/io.py",
         f"datasets/{adapter}.py",
     ]
     return fingerprint(
         {
-            "schema_version": 3,
-            "inventory_contract": {
-                "schema": InventoryItem.model_json_schema(),
-                "source": fingerprint(
-                    {
-                        "base": inspect.getsource(models_module.ContractModel),
-                        "inventory": inspect.getsource(InventoryItem),
-                        "safe_path_segment": inspect.getsource(models_module._safe_path_segment),
-                        "qualify_id": inspect.getsource(models_module.qualify_id),
-                    }
-                ),
-            },
-            "extraction_format": EXTRACTION_FORMAT_VERSION,
-            "source_artifact_format": SOURCE_ARTIFACT_FORMAT_VERSION,
-            "pipeline": _callable_fingerprint(
-                _portable_path,
-                _dataset_artifact_paths,
-                _inventory_digest,
-                _validate_inventory_completeness,
-            ),
-            "code": _component_fingerprint(repo_root, component_paths),
+            "schema_version": 4,
+            "code": _module_content_fingerprint(repo_root, component_paths),
+            "runtime": runtime_identity,
+            "dependency_lock": dependency_lock_digest,
         }
     )
 
 
-def _audio_implementation_fingerprint(_repo_root: Path, ffmpeg_version: Any) -> str:
-    """Fingerprint only code and tooling that can change prepared WAV bytes."""
+def _audio_implementation_fingerprint(
+    repo_root: Path,
+    runtime_identity: Any,
+    dependency_lock_digest: str | None = None,
+) -> str:
+    """Fingerprint complete conversion modules and runtime identities."""
 
     return fingerprint(
         {
-            "schema_version": 1,
-            "conversion": _callable_fingerprint(
-                audio_module.probe,
-                audio_module._ffmpeg_command,
-                audio_module._needs_explicit_channel_average,
-                audio_module._materialize_with_ffmpeg,
-                audio_module._materialize_with_soundfile,
+            "schema_version": 2,
+            "code": _module_content_fingerprint(
+                repo_root,
+                ("audio.py", "state.py"),
             ),
-            "ffmpeg": ffmpeg_version,
+            "runtime": runtime_identity,
+            "dependency_lock": dependency_lock_digest,
         }
     )
 
 
-def _component_fingerprint(repo_root: Path, relative_paths: Iterable[str]) -> str:
+def _module_content_fingerprint(repo_root: Path, relative_paths: Iterable[str]) -> str:
     source_root = _source_root(repo_root)
     payload = []
     for relative_path in sorted(set(relative_paths)):
         path = source_root / relative_path
         payload.append((relative_path, sha256_file(path) if path.is_file() else None))
     return fingerprint(payload)
-
-
-def _callable_fingerprint(*functions: Any) -> str:
-    return fingerprint(
-        [(function.__qualname__, inspect.getsource(function)) for function in functions]
-    )
 
 
 def _source_root(repo_root: Path) -> Path:
@@ -754,25 +786,6 @@ def _local_source_fingerprints(sources: Iterable[Any]) -> list[tuple[str, Any]]:
             value = None
         fingerprints.append((source.name, value))
     return fingerprints
-
-
-def _portable_config_payload(loaded: LoadedEdition) -> dict[str, Any]:
-    payload = loaded.config.model_dump(mode="python", exclude_none=True)
-
-    def normalize(value: Any) -> Any:
-        if isinstance(value, Path):
-            return _portable_path(value, loaded.repo_root, None)
-        if isinstance(value, PurePath):
-            return value.as_posix()
-        if isinstance(value, dict):
-            return {str(key): normalize(item) for key, item in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [normalize(item) for item in value]
-        return getattr(value, "value", value)
-
-    normalized = normalize(payload)
-    assert isinstance(normalized, dict)
-    return normalized
 
 
 def _portable_path(path: Path, repo_root: Path, workspace: Path | None) -> str:

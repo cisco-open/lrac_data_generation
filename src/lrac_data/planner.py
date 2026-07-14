@@ -116,6 +116,7 @@ def build_plan(
                 source.url is not None
                 and source.checksum is None
                 and not source.options.get("checksums")
+                and not source.artifact_checksums
             ):
                 integrity_warnings.append(
                     f"{dataset.id}/{source.name}: no upstream archive checksum; "

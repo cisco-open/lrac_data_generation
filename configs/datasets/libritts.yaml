@@ -3,6 +3,8 @@ adapter: libritts
 release: "OpenSLR 60"
 license: "CC BY 4.0"
 media_kinds: [speech]
+expected_inventory:
+  speech: 149736
 sources:
   - name: train_clean_100
     url: "https://www.openslr.org/resources/60/train-clean-100.tar.gz"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import os
 import platform
@@ -222,16 +223,36 @@ class StateStore:
 
 
 def environment_provenance(repo_root: Path) -> dict[str, Any]:
-    """Collect inexpensive provenance without importing optional audio packages."""
+    """Collect inexpensive tool and package identities without importing packages."""
 
     return {
         "git_sha": _command_output(["git", "rev-parse", "HEAD"], cwd=repo_root),
         "python": sys.version.split()[0],
         "platform": platform.platform(),
-        "ffmpeg": _command_output(["ffmpeg", "-version"], first_line=True),
+        "ffmpeg": _command_output(["ffmpeg", "-version"]),
         "git": _command_output(["git", "--version"], first_line=True),
-        "zip": _command_output(["zip", "-v"], first_line=True),
+        "zip": _command_output(["zip", "-v"]),
+        "packages": {
+            name: _package_version(name)
+            for name in (
+                "httpx",
+                "numpy",
+                "pyarrow",
+                "pydantic",
+                "pyyaml",
+                "scipy",
+                "soundfile",
+                "typer",
+            )
+        },
     }
+
+
+def _package_version(name: str) -> str | None:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
 
 
 def _command_output(

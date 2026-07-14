@@ -3,6 +3,8 @@ adapter: fsd50k
 release: "Zenodo record 4060432"
 license: "Dataset metadata CC BY 4.0; audio retains per-clip Freesound licenses"
 media_kinds: [noise]
+expected_inventory:
+  noise: 40966
 sources:
   - name: ground_truth
     url: "https://zenodo.org/records/4060432/files/FSD50K.ground_truth.zip?download=1"

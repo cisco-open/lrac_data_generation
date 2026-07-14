@@ -3,6 +3,8 @@ adapter: fma
 release: "FMA medium"
 license: "Per-track Creative Commons licenses recorded in FMA metadata"
 media_kinds: [noise]
+expected_inventory:
+  noise: 25000
 sources:
   - name: metadata
     url: "https://os.unil.cloud.switch.ch/fma/fma_metadata.zip"

@@ -118,6 +118,39 @@ def verify_checksum(path: Path, checksum: str | None) -> None:
         )
 
 
+def require_checksum_map(
+    value: object,
+    expected_keys: Iterable[str],
+    *,
+    label: str,
+) -> dict[str, str]:
+    """Validate and normalize checksums for a templated remote source."""
+
+    ordered_keys = tuple(expected_keys)
+    expected = set(ordered_keys)
+    if len(expected) != len(ordered_keys):
+        raise ValueError(f"{label} contains duplicate artifact keys")
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} requires a checksum for every artifact")
+
+    actual = set(value)
+    if actual != expected:
+        raise ValueError(
+            f"{label} checksum map mismatch: expected {len(expected)}, got {len(actual)} "
+            f"(missing {len(expected - actual)}, unexpected {len(actual - expected)})"
+        )
+
+    normalized: dict[str, str] = {}
+    for key in ordered_keys:
+        checksum = value[key]
+        if not isinstance(checksum, str):
+            raise ValueError(f"{label} checksum for {key!r} must be a string")
+        normalized_checksum = _normalized_checksum(checksum)
+        assert normalized_checksum is not None
+        normalized[key] = normalized_checksum
+    return normalized
+
+
 def download_file(
     url: str,
     destination: Path,
@@ -149,17 +182,35 @@ def download_file(
         state_path.unlink(missing_ok=True)
     elif destination.is_file() and destination.stat().st_size > 0:
         state = _read_download_state(destination)
+        state_matches = state is not None and _download_state_matches_file(destination, state)
+        state_sha256 = _state_sha256(state) if state_matches and state is not None else None
         if (
-            state is not None
-            and _download_state_matches_file(destination, state)
+            state_matches
+            and state is not None
             and state.get("url") == url
             and state.get("checksum") == normalized_checksum
-            and _state_sha256(state) is not None
+            and state_sha256 is not None
         ):
             return destination
-        # Migrate an existing cache with one read.  A changed URL without a
-        # checksum cannot establish that it still names the same bytes.
-        if not (normalized_checksum is None and state is not None and state.get("url") != url):
+
+        # A newly pinned SHA-256 can authenticate a stat-bound cache entry
+        # without rereading the artifact.  This also upgrades its sidecar so
+        # subsequent calls take the exact-match path above.
+        if normalized_checksum is not None and state_sha256 is not None:
+            configured_algorithm, configured_digest = _checksum_parts(normalized_checksum)
+            if configured_algorithm == "sha256" and configured_digest == state_sha256:
+                _write_download_state(
+                    destination,
+                    url=url,
+                    checksum=normalized_checksum,
+                    sha256=state_sha256,
+                )
+                return destination
+
+        # A configured checksum can authenticate an otherwise untrusted cache
+        # with one read.  Without one, only the exact stat/URL/sidecar match
+        # above is trustworthy; an arbitrary pre-existing file must be fetched.
+        if normalized_checksum is not None:
             digests = _file_digests(destination, configured_algorithm)
             try:
                 _verify_digest(destination, normalized_checksum, digests)

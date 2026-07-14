@@ -170,6 +170,20 @@ def validate_command(
         int,
         typer.Option("--workers", min=1, help="Concurrent audio validation workers"),
     ] = 4,
+    edition_config: Annotated[
+        Path | None,
+        typer.Option(
+            "--edition-config",
+            exists=True,
+            dir_okay=False,
+            resolve_path=True,
+            help="Config file for a run recorded with an external edition path",
+        ),
+    ] = None,
+    repo_root: Annotated[
+        Path | None,
+        typer.Option("--repo-root", file_okay=False, resolve_path=True, hidden=True),
+    ] = None,
 ) -> None:
     """Validate each published edition/selection independently."""
 
@@ -185,20 +199,31 @@ def validate_command(
         raise typer.Exit(code=1)
     failed = False
     for group in groups:
-        publication = validate_published_run(group, workspace=workspace_root)
-        for error in publication.errors:
-            typer.echo(f"  {error}", err=True)
+        publication = validate_published_run(
+            group,
+            workspace=workspace_root,
+            repo_root=repo_root,
+            edition_config=edition_config,
+        )
+        loaded = publication.config
+        for publication_error in publication.errors:
+            typer.echo(f"  {publication_error}", err=True)
+        expected_counts = (
+            publication.metadata.manifest_counts if publication.metadata is not None else None
+        )
         report = validate_manifests(
             list(publication.manifests),
             workspace=workspace_root,
             verify_checksums=verify_checksums,
+            expected_counts=expected_counts,
+            target_audio=loaded.config.audio if loaded is not None else None,
             workers=workers,
         )
         typer.echo(
             f"{group.relative_to(root)}: {report.records} records, {report.audio_files} audio files"
         )
-        for error in report.errors:
-            typer.echo(f"  {error}", err=True)
+        for report_error in report.errors:
+            typer.echo(f"  {report_error}", err=True)
         failed = failed or not publication.ok or not report.ok
     if failed:
         raise typer.Exit(code=1)

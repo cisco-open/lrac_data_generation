@@ -3,11 +3,15 @@ adapter: vctk
 release: "0.92"
 license: "CC BY 4.0"
 media_kinds: [speech]
+expected_inventory:
+  speech: 88328
 sources:
   - name: corpus
     url: "https://datashare.ed.ac.uk/download/DS_10283_3443.zip"
     filename: "DS_10283_3443.zip"
     checksum: null
+    artifact_checksums:
+      "DS_10283_3443.zip": "3a7173867098ff2fe3b699059274f317ea8f2415214a5058c321732dcc41bcd5"
 expected_files:
   - "VCTK-Corpus/wav48_silence_trimmed/**/*.flac"
   - "VCTK-Corpus/speaker-info.txt"

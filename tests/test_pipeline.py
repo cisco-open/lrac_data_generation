@@ -48,14 +48,6 @@ class FixtureAdapter(DatasetAdapter):
         ]
 
 
-def _alternate_ffmpeg_command(_conversions: object) -> list[str]:
-    return ["ffmpeg", "alternate"]
-
-
-def _alternate_channel_average(_stderr: str) -> bool:
-    return True
-
-
 def test_workspace_creation_rejects_managed_directory_symlinks(
     tmp_path: Path,
 ) -> None:
@@ -210,6 +202,16 @@ curations:
     monkeypatch.setattr(
         "lrac_data.pipeline._require_preparation_requirements", lambda _loaded: None
     )
+    real_materialize_all = pipeline_module.materialize_all
+    materialization_batch_sizes: list[int] = []
+
+    def recording_materialize_all(tasks, *, workers):
+        batch = list(tasks)
+        materialization_batch_sizes.append(len(batch))
+        return real_materialize_all(batch, workers=workers)
+
+    monkeypatch.setattr(pipeline_module, "_MATERIALIZATION_CHUNK_SIZE", 1)
+    monkeypatch.setattr(pipeline_module, "materialize_all", recording_materialize_all)
 
     curated = prepare_edition("fixture", selection="curated", workspace=workspace, repo_root=repo)
     checksum_cache = workspace / "state" / "source-checksums" / "fixture.json"
@@ -237,6 +239,8 @@ curations:
         "quality_rejected": 0,
     }
     assert FixtureAdapter.fetch_calls == 1
+    assert materialization_batch_sizes
+    assert max(materialization_batch_sizes) == 1
     assert checksum_cache.is_file()
     assert uncurated.resumed_datasets == ("fixture",)
     assert {item.source_id for item in read_manifest(curated.manifests["train"])} == {"curated"}
@@ -344,13 +348,12 @@ def test_manifest_publication_restores_stranded_backup_before_staging_failure(
     assert (destination / "marker").read_text(encoding="utf-8") == "previous"
 
 
-def test_implementation_fingerprints_are_scoped(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_implementation_fingerprints_cover_modules_runtime_and_lock(tmp_path: Path) -> None:
     package = tmp_path / "src" / "lrac_data"
     datasets = package / "datasets"
     datasets.mkdir(parents=True)
     for relative_path in (
+        "pipeline.py",
         "audio.py",
         "state.py",
         "models.py",
@@ -363,95 +366,115 @@ def test_implementation_fingerprints_are_scoped(
         "datasets/io.py",
         "datasets/dns5.py",
         "datasets/ears.py",
-        "datasets/fma.py",
-        "datasets/fsd50k.py",
     ):
         path = package / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(relative_path, encoding="utf-8")
-    (package / "audio.py").write_text(
-        """\
-def _ffmpeg_command(conversions):
-    return ["ffmpeg", str(len(conversions))]
 
-def _materialize_with_soundfile(task, temporary):
-    return (task, temporary)
-
-def cache_helper():
-    return 1
-""",
-        encoding="utf-8",
+    inventory_runtime = {
+        "python": "3.11.0",
+        "git": "git fixture",
+        "zip": "zip fixture build A",
+        "packages": {"pyarrow": "1"},
+    }
+    audio_runtime = {
+        "python": "3.11.0",
+        "ffmpeg": "ffmpeg fixture build A",
+        "packages": {"soundfile": "1"},
+    }
+    dns_before = _inventory_implementation_fingerprint(
+        tmp_path,
+        "dns5",
+        runtime_identity=inventory_runtime,
+        dependency_lock_digest="lock-a",
     )
-    for adapter in ("dns5", "ears", "fma", "fsd50k"):
-        (datasets / f"{adapter}.py").write_text(
-            f"""\
-class {adapter.title()}Adapter:
-    def fetch(self):
-        return "first"
-
-    def inventory(self):
-        return ["{adapter}"]
-""",
-            encoding="utf-8",
-        )
-
-    audio_before = _audio_implementation_fingerprint(tmp_path, "ffmpeg fixture")
-    dns_before = _inventory_implementation_fingerprint(tmp_path, "dns5")
-    ears_before = _inventory_implementation_fingerprint(tmp_path, "ears")
-    fma_before = _inventory_implementation_fingerprint(tmp_path, "fma")
-    fsd50k_before = _inventory_implementation_fingerprint(tmp_path, "fsd50k")
+    ears_before = _inventory_implementation_fingerprint(
+        tmp_path,
+        "ears",
+        runtime_identity=inventory_runtime,
+        dependency_lock_digest="lock-a",
+    )
+    audio_before = _audio_implementation_fingerprint(tmp_path, audio_runtime, "lock-a")
 
     (package / "cli.py").write_text("changed CLI", encoding="utf-8")
-    assert _audio_implementation_fingerprint(tmp_path, "ffmpeg fixture") == audio_before
-    assert _inventory_implementation_fingerprint(tmp_path, "dns5") == dns_before
-    (package / "models.py").write_text("changed selection policy", encoding="utf-8")
-    assert _inventory_implementation_fingerprint(tmp_path, "dns5") == dns_before
-
-    with (package / "audio.py").open("a", encoding="utf-8") as stream:
-        stream.write("\ndef unrelated_cache_change():\n    return 2\n")
-    assert _audio_implementation_fingerprint(tmp_path, "ffmpeg fixture") == audio_before
-    assert _inventory_implementation_fingerprint(tmp_path, "dns5") == dns_before
-
-    monkeypatch.setattr(
-        pipeline_module.audio_module,
-        "_ffmpeg_command",
-        _alternate_ffmpeg_command,
+    assert (
+        _inventory_implementation_fingerprint(
+            tmp_path,
+            "dns5",
+            runtime_identity=inventory_runtime,
+            dependency_lock_digest="lock-a",
+        )
+        == dns_before
     )
-    assert _audio_implementation_fingerprint(tmp_path, "ffmpeg fixture") != audio_before
+    assert _audio_implementation_fingerprint(tmp_path, audio_runtime, "lock-a") == audio_before
+
+    dispatch_path = datasets / "__init__.py"
+    dispatch_path.write_text("changed adapter dispatch", encoding="utf-8")
+    assert (
+        _inventory_implementation_fingerprint(
+            tmp_path,
+            "dns5",
+            runtime_identity=inventory_runtime,
+            dependency_lock_digest="lock-a",
+        )
+        != dns_before
+    )
+    assert (
+        _inventory_implementation_fingerprint(
+            tmp_path,
+            "ears",
+            runtime_identity=inventory_runtime,
+            dependency_lock_digest="lock-a",
+        )
+        != ears_before
+    )
+    dispatch_path.write_text("datasets/__init__.py", encoding="utf-8")
+
+    (package / "models.py").write_text("changed contract", encoding="utf-8")
+    assert (
+        _inventory_implementation_fingerprint(
+            tmp_path,
+            "dns5",
+            runtime_identity=inventory_runtime,
+            dependency_lock_digest="lock-a",
+        )
+        != dns_before
+    )
+    assert _audio_implementation_fingerprint(tmp_path, audio_runtime, "lock-a") == audio_before
 
     dns_path = datasets / "dns5.py"
-    dns_path.write_text(
-        dns_path.read_text(encoding="utf-8").replace('return "first"', 'return "faster"'),
-        encoding="utf-8",
+    dns_path.write_text("changed DNS adapter", encoding="utf-8")
+    dns_after = _inventory_implementation_fingerprint(
+        tmp_path,
+        "dns5",
+        runtime_identity=inventory_runtime,
+        dependency_lock_digest="lock-a",
     )
-    assert _inventory_implementation_fingerprint(tmp_path, "dns5") != dns_before
-    assert _inventory_implementation_fingerprint(tmp_path, "ears") == ears_before
-    dns_after_adapter_change = _inventory_implementation_fingerprint(tmp_path, "dns5")
-
-    (datasets / "inventory.py").write_text("changed inventory", encoding="utf-8")
-    assert _inventory_implementation_fingerprint(tmp_path, "fma") != fma_before
-    assert _inventory_implementation_fingerprint(tmp_path, "fsd50k") != fsd50k_before
-    assert _inventory_implementation_fingerprint(tmp_path, "dns5") != dns_after_adapter_change
-    assert _inventory_implementation_fingerprint(tmp_path, "ears") != ears_before
-    contract_before = _inventory_implementation_fingerprint(tmp_path, "ears")
-    schema = pipeline_module.InventoryItem.model_json_schema()
-    monkeypatch.setattr(
-        pipeline_module.InventoryItem,
-        "model_json_schema",
-        classmethod(lambda _cls: {**schema, "title": "changed inventory contract"}),
-    )
-    assert _inventory_implementation_fingerprint(tmp_path, "ears") != contract_before
-
-
-def test_audio_fingerprint_includes_channel_average_policy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    before = _audio_implementation_fingerprint(tmp_path, "ffmpeg fixture")
-
-    monkeypatch.setattr(
-        pipeline_module.audio_module,
-        "_needs_explicit_channel_average",
-        _alternate_channel_average,
+    assert dns_after != dns_before
+    assert (
+        _inventory_implementation_fingerprint(
+            tmp_path,
+            "ears",
+            runtime_identity=inventory_runtime,
+            dependency_lock_digest="lock-a",
+        )
+        != ears_before
     )
 
-    assert _audio_implementation_fingerprint(tmp_path, "ffmpeg fixture") != before
+    (package / "audio.py").write_text("changed audio conversion", encoding="utf-8")
+    assert _audio_implementation_fingerprint(tmp_path, audio_runtime, "lock-a") != audio_before
+    assert _audio_implementation_fingerprint(
+        tmp_path, {**audio_runtime, "ffmpeg": "ffmpeg fixture build B"}, "lock-a"
+    ) != _audio_implementation_fingerprint(tmp_path, audio_runtime, "lock-a")
+    assert _audio_implementation_fingerprint(
+        tmp_path, audio_runtime, "lock-b"
+    ) != _audio_implementation_fingerprint(tmp_path, audio_runtime, "lock-a")
+    assert (
+        _inventory_implementation_fingerprint(
+            tmp_path,
+            "dns5",
+            runtime_identity={**inventory_runtime, "zip": "zip fixture build B"},
+            dependency_lock_digest="lock-a",
+        )
+        != dns_after
+    )

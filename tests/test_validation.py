@@ -12,23 +12,36 @@ import soundfile as sf
 import lrac_data.validation as validation_module
 from lrac_data.audio import MaterializationTask, materialize
 from lrac_data.manifests import write_manifest
-from lrac_data.models import ManifestItem, MediaKind, Split, qualify_id
+from lrac_data.models import AudioFormat, ManifestItem, MediaKind, Split, qualify_id
 from lrac_data.validation import validate_manifests
 
 
-def _manifest_item(audio_path: Path, *, workspace: Path, checksum: str) -> ManifestItem:
+def _manifest_item(
+    audio_path: Path,
+    *,
+    workspace: Path,
+    checksum: str,
+    source_id: str | None = None,
+    split: Split = Split.TRAIN,
+    speaker_id: str | None = None,
+    sample_rate_hz: int = 24_000,
+    channels: int = 1,
+    frame_count: int = 240,
+) -> ManifestItem:
+    source_id = source_id or audio_path.stem
     return ManifestItem(
-        id=qualify_id("fixture", audio_path.stem),
+        id=qualify_id("fixture", source_id),
         dataset="fixture",
-        media_kind=MediaKind.NOISE,
+        media_kind=MediaKind.SPEECH if speaker_id is not None else MediaKind.NOISE,
         audio_path=audio_path.relative_to(workspace).as_posix(),
         source_release="fixture-v1",
-        source_id=audio_path.stem,
-        split=Split.TRAIN,
-        sample_rate_hz=24_000,
-        channels=1,
-        frame_count=240,
+        source_id=source_id,
+        split=split,
+        sample_rate_hz=sample_rate_hz,
+        channels=channels,
+        frame_count=frame_count,
         checksum=checksum,
+        speaker_id=speaker_id,
     )
 
 
@@ -191,3 +204,158 @@ def test_parallel_validation_rehashes_reused_audio_in_manifest_order(
     assert maximum_active == 3
     assert checksum_flags == [True] * 6
     assert report.errors == tuple(f"fixture:{index}: checksum mismatch" for index in range(6))
+
+
+def test_validation_rejects_empty_training_partition(tmp_path: Path) -> None:
+    manifests = [tmp_path / f"{name}.jsonl" for name in ("train", "validation", "evaluation")]
+    for manifest in manifests:
+        write_manifest(manifest, [])
+
+    report = validate_manifests(
+        manifests,
+        workspace=tmp_path,
+        expected_counts={"train": 0, "validation": 0, "evaluation": 0},
+    )
+
+    assert not report.ok
+    assert "train.jsonl: training partition must not be empty" in report.errors
+
+
+def test_validation_reconciles_recorded_partition_counts(tmp_path: Path) -> None:
+    audio_path = tmp_path / "audio.wav"
+    sf.write(audio_path, np.zeros(240, dtype=np.float32), 24_000, subtype="PCM_16")
+    metadata = validation_module.probe(audio_path)
+    manifests = [tmp_path / f"{name}.jsonl" for name in ("train", "validation", "evaluation")]
+    write_manifest(
+        manifests[0],
+        [_manifest_item(audio_path, workspace=tmp_path, checksum=metadata.sha256)],
+    )
+    write_manifest(manifests[1], [])
+    write_manifest(manifests[2], [])
+
+    report = validate_manifests(
+        manifests,
+        workspace=tmp_path,
+        expected_counts={"train": 2, "validation": 0, "evaluation": 0},
+    )
+
+    assert "train.jsonl: run.json records 2 items, found 1" in report.errors
+
+
+def test_validation_rejects_record_in_wrong_manifest_split(tmp_path: Path) -> None:
+    audio_path = tmp_path / "audio.wav"
+    sf.write(audio_path, np.zeros(240, dtype=np.float32), 24_000, subtype="PCM_16")
+    metadata = validation_module.probe(audio_path)
+    manifest = tmp_path / "train.jsonl"
+    write_manifest(
+        manifest,
+        [
+            _manifest_item(
+                audio_path,
+                workspace=tmp_path,
+                checksum=metadata.sha256,
+                split=Split.VALIDATION,
+            )
+        ],
+    )
+
+    report = validate_manifests([manifest], workspace=tmp_path)
+
+    assert any("does not match manifest partition 'train'" in error for error in report.errors)
+
+
+def test_validation_rejects_train_validation_speaker_leakage(tmp_path: Path) -> None:
+    audio_path = tmp_path / "audio.wav"
+    sf.write(audio_path, np.zeros(240, dtype=np.float32), 24_000, subtype="PCM_16")
+    metadata = validation_module.probe(audio_path)
+    train = tmp_path / "train.jsonl"
+    validation = tmp_path / "validation.jsonl"
+    write_manifest(
+        train,
+        [
+            _manifest_item(
+                audio_path,
+                workspace=tmp_path,
+                checksum=metadata.sha256,
+                source_id="train",
+                speaker_id="speaker",
+            )
+        ],
+    )
+    write_manifest(
+        validation,
+        [
+            _manifest_item(
+                audio_path,
+                workspace=tmp_path,
+                checksum=metadata.sha256,
+                source_id="validation",
+                split=Split.VALIDATION,
+                speaker_id="speaker",
+            )
+        ],
+    )
+
+    report = validate_manifests([train, validation], workspace=tmp_path)
+
+    assert (
+        "fixture:speaker: speaker appears in both train and validation manifests" in report.errors
+    )
+
+
+def test_validation_enforces_edition_audio_target_not_manifest_claims(tmp_path: Path) -> None:
+    audio_path = tmp_path / "audio.wav"
+    sf.write(audio_path, np.zeros((240, 2), dtype=np.float32), 48_000, subtype="FLOAT")
+    metadata = validation_module.probe(audio_path)
+    manifest = tmp_path / "train.jsonl"
+    write_manifest(
+        manifest,
+        [
+            _manifest_item(
+                audio_path,
+                workspace=tmp_path,
+                checksum=metadata.sha256,
+                sample_rate_hz=48_000,
+                channels=2,
+            )
+        ],
+    )
+
+    report = validate_manifests(
+        [manifest],
+        workspace=tmp_path,
+        target_audio=AudioFormat(),
+    )
+
+    assert any("manifest declares 48000 Hz" in error for error in report.errors)
+    assert any("manifest declares 2 channels" in error for error in report.errors)
+    assert "fixture:audio: sample-rate mismatch" in report.errors
+    assert "fixture:audio: channel-count mismatch" in report.errors
+    assert "fixture:audio: sample-format mismatch" in report.errors
+
+
+def test_validation_rejects_flac_bytes_renamed_as_wav(tmp_path: Path) -> None:
+    audio_path = tmp_path / "audio.wav"
+    sf.write(
+        audio_path,
+        np.zeros(240, dtype=np.float32),
+        24_000,
+        format="FLAC",
+        subtype="PCM_16",
+    )
+    metadata = validation_module.probe(audio_path)
+    manifest = tmp_path / "train.jsonl"
+    write_manifest(
+        manifest,
+        [_manifest_item(audio_path, workspace=tmp_path, checksum=metadata.sha256)],
+    )
+
+    report = validate_manifests(
+        [manifest],
+        workspace=tmp_path,
+        target_audio=AudioFormat(),
+    )
+
+    assert metadata.format == "FLAC"
+    assert "fixture:audio: container mismatch" in report.errors
+    assert "fixture:audio: expected PCM_16 WAV audio" in report.errors

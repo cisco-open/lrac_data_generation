@@ -25,23 +25,44 @@ def fetch_public_evaluation(spec: PublicEvaluationSpec, workspace: Path) -> Path
             spec.repository_url,
             str(checkout),
         )
-    if not (checkout / ".git").exists():
-        raise RuntimeError(f"public evaluation checkout is incomplete: {checkout}")
+    _validate_managed_checkout(checkout, spec.repository_url)
 
-    revision_exists = (
-        subprocess.run(
-            ["git", "cat-file", "-e", f"{spec.revision}^{{commit}}"],
-            cwd=checkout,
-            capture_output=True,
-            text=True,
-        ).returncode
-        == 0
+    _git(
+        "fetch",
+        "--depth",
+        "1",
+        "--force",
+        "--no-tags",
+        "origin",
+        spec.revision,
+        cwd=checkout,
     )
-    if not revision_exists:
-        _git("fetch", "--depth", "1", "origin", spec.revision, cwd=checkout)
+    fetched_revision = _git("rev-parse", "--verify", "FETCH_HEAD^{commit}", cwd=checkout)
+    if fetched_revision != spec.revision:
+        raise RuntimeError(
+            "public evaluation fetch did not resolve to the configured revision: "
+            f"expected {spec.revision}, got {fetched_revision}"
+        )
+
+    # Activate sparse mode before moving HEAD so a new checkout never materializes
+    # unrelated repository content. The final clean also removes ignored files.
     _git("sparse-checkout", "init", "--cone", cwd=checkout)
+    _git("clean", "-ffdx", cwd=checkout)
+    _git("checkout", "--detach", "--force", fetched_revision, cwd=checkout)
     _git("sparse-checkout", "set", spec.subdirectory.as_posix(), cwd=checkout)
-    _git("checkout", "--detach", spec.revision, cwd=checkout)
+    _git("reset", "--hard", fetched_revision, cwd=checkout)
+    _git("clean", "-ffdx", cwd=checkout)
+
+    head = _git("rev-parse", "--verify", "HEAD^{commit}", cwd=checkout)
+    if head != spec.revision:
+        raise RuntimeError(
+            "public evaluation checkout is not at the configured revision: "
+            f"expected {spec.revision}, got {head}"
+        )
+    status = _git("status", "--porcelain=v1", "--untracked-files=all", cwd=checkout)
+    if status:
+        raise RuntimeError(f"public evaluation checkout is dirty after reset: {checkout}")
+
     root = (checkout / Path(spec.subdirectory.as_posix())).resolve()
     _require_descendant(root, checkout, "public evaluation data")
     if not root.is_dir():
@@ -130,9 +151,26 @@ def _require_descendant(path: Path, root: Path, label: str) -> None:
         raise ValueError(f"{label} must not be its root: {root}")
 
 
-def _git(*arguments: str, cwd: Path | None = None) -> None:
+def _validate_managed_checkout(checkout: Path, repository_url: str) -> None:
+    git_directory = checkout / ".git"
+    if git_directory.is_symlink() or not git_directory.is_dir():
+        raise RuntimeError(f"public evaluation checkout is incomplete: {checkout}")
+
+    repository_root = Path(_git("rev-parse", "--show-toplevel", cwd=checkout)).resolve()
+    absolute_git_directory = Path(_git("rev-parse", "--absolute-git-dir", cwd=checkout)).resolve()
+    if repository_root != checkout or absolute_git_directory != git_directory.resolve():
+        raise RuntimeError(f"public evaluation checkout is not workspace-managed: {checkout}")
+
+    origin_urls = _git("remote", "get-url", "--all", "origin", cwd=checkout).splitlines()
+    if origin_urls != [repository_url]:
+        raise RuntimeError(
+            "public evaluation checkout origin does not match the configured repository URL"
+        )
+
+
+def _git(*arguments: str, cwd: Path | None = None) -> str:
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["git", *arguments],
             cwd=cwd,
             check=True,
@@ -144,6 +182,7 @@ def _git(*arguments: str, cwd: Path | None = None) -> None:
     except subprocess.CalledProcessError as error:
         detail = error.stderr.strip() or error.stdout.strip()
         raise RuntimeError(f"git {' '.join(arguments)} failed: {detail}") from error
+    return result.stdout.strip()
 
 
 __all__ = ["fetch_public_evaluation", "inventory_public_evaluation"]

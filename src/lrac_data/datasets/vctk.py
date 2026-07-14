@@ -8,16 +8,21 @@ from lrac_data.models import InventoryItem, MediaKind
 
 from .base import DatasetAdapter
 from .common import read_text, require_unique
-from .io import download_file, safe_extract_zip
+from .io import download_file, require_checksum_map, safe_extract_zip
 
 
 class VCTKAdapter(DatasetAdapter):
     def fetch(self) -> Path:
         source, url, filename = self.remote_source("corpus")
+        checksums = require_checksum_map(
+            source.artifact_checksums,
+            (filename,),
+            label="VCTK corpus",
+        )
         outer = download_file(
             url,
             self.download_dir / filename,
-            checksum=source.checksum,
+            checksum=checksums[filename],
         )
         outer_root = self.extracted_dir / "outer"
         inner = outer_root / "VCTK-Corpus-0.92.zip"

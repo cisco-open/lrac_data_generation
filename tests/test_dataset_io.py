@@ -22,6 +22,7 @@ from lrac_data.datasets.io import (
     download_file,
     download_many,
     remove_derived_archive,
+    require_checksum_map,
     safe_extract_multipart_tar,
     safe_extract_tar,
     safe_extract_zip,
@@ -114,6 +115,22 @@ def test_checksum_verification_accepts_known_digests_and_rejects_mismatch(
         verify_checksum(fixture, "sha256:" + "0" * 64)
 
 
+def test_checksum_map_requires_exact_artifact_keys() -> None:
+    checksums = {
+        "a": "a" * 64,
+        "b": "sha256:" + "b" * 64,
+    }
+
+    assert require_checksum_map(checksums, ("a", "b"), label="fixture") == {
+        "a": "sha256:" + "a" * 64,
+        "b": "sha256:" + "b" * 64,
+    }
+    with pytest.raises(ValueError, match=r"missing 1, unexpected 0"):
+        require_checksum_map({"a": checksums["a"]}, ("a", "b"), label="fixture")
+    with pytest.raises(ValueError, match=r"missing 0, unexpected 1"):
+        require_checksum_map({**checksums, "c": "c" * 64}, ("a", "b"), label="fixture")
+
+
 def test_download_streams_to_partial_file_then_publishes_atomically(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -186,6 +203,54 @@ def test_download_reuses_matching_stat_url_and_checksum_without_reading_file(
         )
         == destination
     )
+
+
+def test_download_without_checksum_refetches_untrusted_preexisting_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "untrusted.tar"
+    destination.write_bytes(b"unrelated cached bytes")
+    payload = b"bytes from the configured URL"
+    calls: list[str] = []
+
+    def fake_urlopen(request: object, *, timeout: float) -> _FakeResponse:
+        del timeout
+        calls.append(request.full_url)  # type: ignore[attr-defined]
+        return _FakeResponse(payload)
+
+    monkeypatch.setattr("lrac_data.datasets.io.urllib.request.urlopen", fake_urlopen)
+
+    download_file("https://example.invalid/archive.tar", destination, attempts=1)
+
+    assert destination.read_bytes() == payload
+    assert calls == ["https://example.invalid/archive.tar"]
+    state = json.loads(destination.with_name("untrusted.tar.download.json").read_text())
+    assert state["url"] == calls[0]
+    assert state["sha256"] == hashlib.sha256(payload).hexdigest()
+
+
+def test_new_sha256_pin_reuses_matching_stat_bound_cache_without_reading_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = b"cached archive"
+    destination = tmp_path / "cached.tar"
+    url = "https://example.invalid/cached.tar"
+    monkeypatch.setattr(
+        "lrac_data.datasets.io.urllib.request.urlopen",
+        lambda *_args, **_kwargs: _FakeResponse(payload),
+    )
+    download_file(url, destination)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("matching stat-bound SHA-256 cache must not be read or fetched")
+
+    monkeypatch.setattr("lrac_data.datasets.io.urllib.request.urlopen", fail)
+    monkeypatch.setattr("lrac_data.datasets.io._file_digests", fail)
+    checksum = "sha256:" + hashlib.sha256(payload).hexdigest()
+
+    assert download_file(url, destination, checksum=checksum) == destination
+    state = json.loads(destination.with_name("cached.tar.download.json").read_text())
+    assert state["checksum"] == checksum
 
 
 def test_trusted_sha256_falls_back_after_download_stat_changes(

@@ -34,10 +34,37 @@ def test_materialize_writes_mono_24khz_pcm16_wav(tmp_path: Path) -> None:
     assert metadata.sample_rate_hz == 24_000
     assert metadata.channels == 1
     assert metadata.num_frames == 2_400
+    assert metadata.format == "WAV"
     assert len(metadata.sha256) == 64
     assert info.format == "WAV"
     assert info.subtype == "PCM_16"
     assert not (destination.parent / ".item.tmp.wav").exists()
+
+
+def test_materialize_rejects_flac_bytes_written_to_wav_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.wav"
+    destination = tmp_path / "prepared.wav"
+    sf.write(source, np.zeros(240, dtype=np.float32), 24_000, subtype="PCM_16")
+
+    def write_flac(_task: MaterializationTask, temporary: Path) -> None:
+        sf.write(
+            temporary,
+            np.zeros(240, dtype=np.float32),
+            24_000,
+            format="FLAC",
+            subtype="PCM_16",
+        )
+
+    monkeypatch.setattr(audio_module.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(audio_module, "_materialize_with_soundfile", write_flac)
+
+    with pytest.raises(ValueError, match="materialized audio failed validation"):
+        materialize(MaterializationTask(source, destination))
+
+    assert not destination.exists()
+    assert not destination.with_name(".prepared.tmp.wav").exists()
 
 
 def test_materialize_reuses_only_when_source_and_fingerprint_match(tmp_path: Path) -> None:
@@ -80,6 +107,7 @@ def test_materialize_hashes_new_output_once_and_reuses_by_stat(tmp_path: Path, m
     journal = audio_module._state_path(destination)
     journal_record = json.loads(journal.read_text(encoding="utf-8"))
     identity = journal_record.pop("identity")
+    journal_record.pop("format")
     journal_record.update(
         {
             "size_bytes": identity["size"],
@@ -110,6 +138,35 @@ def test_materialize_hashes_new_output_once_and_reuses_by_stat(tmp_path: Path, m
     )
     materialize(changed_task)
     assert checksum_paths == [destination.with_name(".prepared.tmp.wav")]
+
+
+def test_materialize_does_not_reuse_journal_record_with_non_wav_format(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.wav"
+    destination = tmp_path / "prepared.wav"
+    sf.write(source, np.zeros(240, dtype=np.float32), 24_000, subtype="PCM_16")
+    task = MaterializationTask(source, destination)
+    monkeypatch.setattr(audio_module.shutil, "which", lambda _name: None)
+    materialize(task)
+
+    journal = audio_module._state_path(destination)
+    record = json.loads(journal.read_text(encoding="utf-8"))
+    record["format"] = "FLAC"
+    journal.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    audio_module._journal_snapshots.pop(audio_module._journal_path(destination), None)
+    conversions: list[Path] = []
+    real_materialize = audio_module._materialize_with_soundfile
+
+    def recording_materialize(task: MaterializationTask, temporary: Path) -> None:
+        conversions.append(task.destination)
+        real_materialize(task, temporary)
+
+    monkeypatch.setattr(audio_module, "_materialize_with_soundfile", recording_materialize)
+
+    materialize(task)
+
+    assert conversions == [destination]
 
 
 def test_materialize_rejects_same_size_output_replacement_with_restored_mtime(
@@ -184,6 +241,7 @@ def test_materialize_all_parallel_work_is_bounded_and_destination_sorted(monkeyp
                     sample_rate_hz=task.sample_rate_hz,
                     channels=task.channels,
                     num_frames=1,
+                    format="WAV",
                     subtype="PCM_16",
                     sha256=task.destination.stem,
                 )

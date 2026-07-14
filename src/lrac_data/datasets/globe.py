@@ -11,7 +11,7 @@ from typing import Any
 from lrac_data.models import InventoryItem, MediaKind
 
 from .base import DatasetAdapter
-from .io import DownloadRequest, download_file, download_many
+from .io import DownloadRequest, download_file, download_many, require_checksum_map
 
 
 class GLOBEAdapter(DatasetAdapter):
@@ -70,13 +70,21 @@ class GLOBEAdapter(DatasetAdapter):
         batch_size = int(source.options.get("batch_size", 256))
         if batch_size < 1:
             raise ValueError("GLOBE parquet batch_size must be at least 1")
+        indexes = tuple(range(first, last + 1))
+        filenames = tuple(f"{index:04d}.parquet" for index in indexes)
+        checksums = require_checksum_map(
+            source.artifact_checksums,
+            filenames,
+            label="GLOBE parquet_shards",
+        )
         parquet_paths = download_many(
             (
                 DownloadRequest(
                     url=source.url.format(index=index),
-                    destination=self.download_dir / f"{index:04d}.parquet",
+                    destination=self.download_dir / filename,
+                    checksum=checksums[filename],
                 )
-                for index in range(first, last + 1)
+                for index, filename in zip(indexes, filenames, strict=True)
             ),
             max_workers=self.workers,
             downloader=download_file,

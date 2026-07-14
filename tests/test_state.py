@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import lrac_data.state as state_module
 from lrac_data.state import FileIdentity, StateStore, fingerprint, sha256_file
 
 
@@ -108,3 +109,38 @@ def test_state_reuses_known_output_digests(tmp_path: Path, monkeypatch: pytest.M
     assert calls == [unknown]
     assert completed.outputs is not None
     assert completed.outputs[str(known.resolve())] == known_digest
+
+
+def test_environment_provenance_records_full_tool_and_package_identities(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[tuple[str, ...], bool]] = []
+
+    def command_output(
+        command: list[str], *, cwd: Path | None = None, first_line: bool = False
+    ) -> str:
+        del cwd
+        calls.append((tuple(command), first_line))
+        return "full output"
+
+    monkeypatch.setattr(state_module, "_command_output", command_output)
+    monkeypatch.setattr(state_module, "_package_version", lambda name: f"{name}-version")
+
+    result = state_module.environment_provenance(tmp_path)
+
+    assert result["packages"] == {
+        name: f"{name}-version"
+        for name in (
+            "httpx",
+            "numpy",
+            "pyarrow",
+            "pydantic",
+            "pyyaml",
+            "scipy",
+            "soundfile",
+            "typer",
+        )
+    }
+    assert (("ffmpeg", "-version"), False) in calls
+    assert (("zip", "-v"), False) in calls
+    assert (("git", "--version"), True) in calls

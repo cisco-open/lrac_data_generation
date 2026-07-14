@@ -42,6 +42,9 @@ PathSegment = Annotated[
     AfterValidator(_safe_path_segment),
 ]
 NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+NonNegativeInt = Annotated[int, Field(ge=0)]
+NonNegativeFloat = Annotated[float, Field(ge=0, allow_inf_nan=False)]
+Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 PositiveInt = Annotated[int, Field(gt=0)]
 
 
@@ -122,7 +125,23 @@ class SourceSpec(ContractModel):
     path: Path | None = None
     filename: PathSegment | None = None
     checksum: NonEmptyText | None = None
+    artifact_checksums: dict[str, Sha256] = Field(default_factory=dict)
     options: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("artifact_checksums")
+    @classmethod
+    def validate_artifact_checksums(cls, checksums: dict[str, str]) -> dict[str, str]:
+        for name in checksums:
+            path = PurePosixPath(name)
+            if (
+                not name
+                or "\\" in name
+                or path.is_absolute()
+                or ".." in path.parts
+                or path == PurePosixPath(".")
+            ):
+                raise ValueError(f"artifact checksum path must be safe and relative: {name!r}")
+        return checksums
 
     @model_validator(mode="after")
     def require_location(self) -> SourceSpec:
@@ -424,6 +443,101 @@ class ManifestItem(ContractModel):
         )
 
 
+class ManifestPublication(ContractModel):
+    """One manifest declared by a successfully published run."""
+
+    path: PurePosixPath
+    sha256: Sha256
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, path: PurePosixPath) -> PurePosixPath:
+        if path.is_absolute() or ".." in path.parts or path == PurePosixPath("."):
+            raise ValueError("published manifest paths must be safe relative paths")
+        return path
+
+
+class RunCounts(ContractModel):
+    """Recorded selection and materialization counts for one published run."""
+
+    training: NonNegativeInt
+    validation: NonNegativeInt
+    evaluation: NonNegativeInt
+    withheld: NonNegativeInt
+    quality_rejected: NonNegativeInt
+    open_evaluation: NonNegativeInt | None = None
+
+
+class RunTimings(ContractModel):
+    """Wall-clock timings recorded as reproducibility diagnostics."""
+
+    datasets: dict[PathSegment, NonNegativeFloat]
+    selection_and_source_hashing: NonNegativeFloat
+    materialization: NonNegativeFloat
+    validation: NonNegativeFloat
+    total: NonNegativeFloat
+
+
+class EnvironmentProvenance(ContractModel):
+    """Runtime and dependency versions recorded for a successful run."""
+
+    git_sha: str | None = None
+    python: str | None = None
+    platform: str | None = None
+    ffmpeg: str | None = None
+    git: str | None = None
+    zip: str | None = None
+    packages: dict[Identifier, str | None] = Field(default_factory=dict)
+
+
+class PublishedRunMetadata(ContractModel):
+    """Complete typed contract stored beside a published manifest set."""
+
+    schema_version: Literal[1] = 1
+    run_id: Identifier
+    edition: PathSegment
+    selection: SelectionMode
+    selection_policy: Literal["curated", "all-eligible"]
+    config_path: NonEmptyText
+    config_fingerprint: Sha256
+    implementation_fingerprint: Sha256
+    dependency_lock_digest: Sha256 | None
+    input_fingerprint: Sha256
+    run_fingerprint: Sha256
+    counts: RunCounts
+    inventory_digests: dict[PathSegment, Sha256]
+    selected_source_digest: Sha256
+    inventory_counts: dict[PathSegment, dict[MediaKind, NonNegativeInt]]
+    source_artifacts: dict[PathSegment, tuple[dict[NonEmptyText, NonEmptyText], ...]]
+    manifests: dict[PathSegment, ManifestPublication]
+    timings_seconds: RunTimings
+    environment: EnvironmentProvenance
+
+    @model_validator(mode="after")
+    def validate_selection_policy(self) -> PublishedRunMetadata:
+        if self.selection_policy != self.selection.policy_name:
+            raise ValueError(
+                f"selection policy must be {self.selection.policy_name!r} "
+                f"for selection {self.selection.value!r}"
+            )
+        if not self.manifests:
+            raise ValueError("a published run must declare at least one manifest")
+        return self
+
+    @property
+    def manifest_counts(self) -> dict[str, int]:
+        """Return run counts keyed by their canonical manifest names."""
+
+        counts = {
+            Split.TRAIN.value: self.counts.training,
+            Split.VALIDATION.value: self.counts.validation,
+            Split.EVALUATION.value: self.counts.evaluation,
+        }
+        if self.counts.open_evaluation is not None:
+            counts["open-evaluation"] = self.counts.open_evaluation
+        return counts
+
+
 class SelectionResult(ContractModel):
     """Complete inventory partition produced by edition selection policy."""
 
@@ -465,12 +579,17 @@ __all__ = [
     "CurationSpec",
     "DatasetConfig",
     "EditionConfig",
+    "EnvironmentProvenance",
     "ExclusionPartition",
     "ExclusionSpec",
     "InventoryItem",
     "ManifestItem",
+    "ManifestPublication",
     "MediaKind",
     "PublicEvaluationSpec",
+    "PublishedRunMetadata",
+    "RunCounts",
+    "RunTimings",
     "SelectionMode",
     "SelectionResult",
     "SourceSpec",

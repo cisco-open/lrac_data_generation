@@ -92,6 +92,43 @@ def test_named_source_downloads_use_adapter_worker_count(
     assert worker_counts == [7]
 
 
+def test_artifact_checksums_verify_without_changing_cache_namespace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    legacy_source = SourceSpec(
+        name="archive",
+        url="https://example.invalid/archive",
+        filename="archive.zip",
+        checksum="md5:" + "1" * 32,
+        options={"legacy": True},
+    )
+    pinned_source = legacy_source.model_copy(
+        update={"artifact_checksums": {"archive.zip": "2" * 64}}
+    )
+    legacy = create_adapter(
+        _config("fma", MediaKind.NOISE, sources=(legacy_source,)),
+        tmp_path,
+        tmp_path / "workspace",
+    )
+    pinned = create_adapter(
+        _config("fma", MediaKind.NOISE, sources=(pinned_source,)),
+        tmp_path,
+        tmp_path / "workspace",
+    )
+    checksums: list[str | None] = []
+
+    def fake_download(url: str, destination: Path, *, checksum: str | None = None) -> Path:
+        del url
+        checksums.append(checksum)
+        return destination
+
+    monkeypatch.setattr("lrac_data.datasets.base.dataset_io.download_file", fake_download)
+
+    assert legacy.cache_namespace == pinned.cache_namespace
+    pinned.download_remote_sources("archive")
+    assert checksums == ["sha256:" + "2" * 64]
+
+
 def test_named_source_downloads_preserve_order_and_ignore_unrequested_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -408,6 +445,10 @@ def test_globe_fetch_uses_record_batches_and_configured_workers(
                 name="parquet_shards",
                 url="https://example.invalid/{index:04d}.parquet",
                 filename="{index:04d}.parquet",
+                artifact_checksums={
+                    "0000.parquet": "0" * 64,
+                    "0001.parquet": "1" * 64,
+                },
                 options={"first": 0, "last": 1},
             ),
         ),
@@ -519,11 +560,13 @@ def test_dns5_fetch_streams_speech_parts_without_joining_archive(
                 name="read_speech_parts",
                 url="https://example.invalid/read_speech.part{suffix}",
                 filename="read_speech.part{suffix}",
+                artifact_checksums={"read_speech.tgz.partaa": "a" * 64},
             ),
             SourceSpec(
                 name="impulse_responses",
                 url="https://example.invalid/rir.tar",
                 filename="rir.tar",
+                artifact_checksums={"rir.tar": "b" * 64},
             ),
         ),
         expected_files=(
@@ -573,11 +616,13 @@ def test_dns5_fetch_retains_source_parts_when_streaming_extraction_fails(
                 name="read_speech_parts",
                 url="https://example.invalid/read_speech.part{suffix}",
                 filename="read_speech.part{suffix}",
+                artifact_checksums={"read_speech.tgz.partaa": "a" * 64},
             ),
             SourceSpec(
                 name="impulse_responses",
                 url="https://example.invalid/rir.tar",
                 filename="rir.tar",
+                artifact_checksums={"rir.tar": "b" * 64},
             ),
         ),
     )
@@ -658,6 +703,7 @@ def test_vctk_fetch_removes_reproducible_inner_archive(
                 name="corpus",
                 url="https://example.invalid/vctk.zip",
                 filename="vctk.zip",
+                artifact_checksums={"vctk.zip": "a" * 64},
             ),
         ),
         expected_files=("VCTK-Corpus/wav48_silence_trimmed/**/*.flac",),

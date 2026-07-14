@@ -8,7 +8,7 @@ import sysconfig
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath
 from typing import Any
 
 import yaml
@@ -36,6 +36,42 @@ class LoadedEdition:
     config: EditionConfig
     path: Path
     repo_root: Path
+
+
+def portable_config_payload(loaded: LoadedEdition) -> dict[str, Any]:
+    """Return the path-stable resolved configuration used for run fingerprints."""
+
+    payload = loaded.config.model_dump(mode="python", exclude_none=True)
+
+    def normalize(value: Any) -> Any:
+        if isinstance(value, Path):
+            return _portable_repo_path(value, loaded.repo_root)
+        if isinstance(value, PurePath):
+            return value.as_posix()
+        if isinstance(value, dict):
+            return {str(key): normalize(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [normalize(item) for item in value]
+        return getattr(value, "value", value)
+
+    normalized = normalize(payload)
+    assert isinstance(normalized, dict)
+    return normalized
+
+
+def portable_config_path(loaded: LoadedEdition) -> str:
+    """Return the canonical provenance path for an edition configuration."""
+
+    return _portable_repo_path(loaded.path, loaded.repo_root)
+
+
+def _portable_repo_path(path: Path, repo_root: Path) -> str:
+    resolved = path.resolve()
+    try:
+        relative = resolved.relative_to(repo_root.resolve())
+    except ValueError:
+        return f"external:{resolved.name}"
+    return f"repo:{relative.as_posix()}"
 
 
 def load_edition_config(
@@ -96,6 +132,77 @@ def load_dataset_config(
     root = _resolve_repo_root(repo_root)
     path = _resolve_dataset_path(dataset, root)
     return _validate_dataset(_load_mapping(path, "dataset"), root, path)
+
+
+def load_recorded_edition_config(
+    config_path: str,
+    *,
+    repo_root: Path | None = None,
+    selection: SelectionMode | str | None = None,
+    edition_config: Path | None = None,
+) -> LoadedEdition:
+    """Resolve the portable configuration path recorded in a published run."""
+
+    root = _resolve_repo_root(repo_root)
+    prefix, separator, raw_path = config_path.partition(":")
+    if not separator or not raw_path:
+        raise ConfigError(f"invalid recorded configuration path: {config_path!r}")
+
+    if prefix == "repo":
+        relative = _safe_recorded_relative_path(raw_path, label="repository")
+        candidate = (root / Path(*relative.parts)).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError as error:
+            raise ConfigError(
+                f"recorded repository configuration escapes the repository root: {config_path!r}"
+            ) from error
+        loaded = load_edition_config(candidate, repo_root=root, selection=selection)
+        resolved_path = portable_config_path(loaded)
+        if resolved_path != config_path:
+            raise ConfigError(
+                f"recorded repository configuration {config_path!r} resolves as {resolved_path!r}"
+            )
+        return loaded
+
+    if prefix == "external":
+        recorded_name = _safe_recorded_external_name(raw_path)
+        if edition_config is None:
+            raise ConfigError(
+                f"recorded external configuration {config_path!r} requires --edition-config"
+            )
+        candidate = Path(edition_config).expanduser().resolve()
+        if candidate.name != recorded_name:
+            raise ConfigError(
+                f"edition configuration filename {candidate.name!r} does not match "
+                f"recorded external filename {recorded_name!r}"
+            )
+        return load_edition_config(candidate, repo_root=root, selection=selection)
+
+    raise ConfigError(f"unsupported recorded configuration path: {config_path!r}")
+
+
+def _safe_recorded_relative_path(raw_path: str, *, label: str) -> PurePosixPath:
+    if "\\" in raw_path:
+        raise ConfigError(f"recorded {label} configuration path is not safe: {raw_path!r}")
+    path = PurePosixPath(raw_path)
+    if (
+        path.is_absolute()
+        or path == PurePosixPath(".")
+        or ".." in path.parts
+        or path.as_posix() != raw_path
+    ):
+        raise ConfigError(f"recorded {label} configuration path is not safe: {raw_path!r}")
+    return path
+
+
+def _safe_recorded_external_name(raw_path: str) -> str:
+    path = _safe_recorded_relative_path(raw_path, label="external")
+    if len(path.parts) != 1:
+        raise ConfigError(
+            f"recorded external configuration must contain only a filename: {raw_path!r}"
+        )
+    return path.name
 
 
 def _load_dataset_reference(
@@ -577,4 +684,5 @@ __all__ = [
     "LoadedEdition",
     "load_dataset_config",
     "load_edition_config",
+    "load_recorded_edition_config",
 ]

@@ -10,7 +10,13 @@ from lrac_data.models import InventoryItem, MediaKind
 
 from .base import DatasetAdapter
 from .common import read_json, require_unique
-from .io import DownloadRequest, download_file, download_many, safe_extract_zip
+from .io import (
+    DownloadRequest,
+    download_file,
+    download_many,
+    require_checksum_map,
+    safe_extract_zip,
+)
 
 
 class EARSAdapter(DatasetAdapter):
@@ -18,12 +24,20 @@ class EARSAdapter(DatasetAdapter):
         participants, participants_url, _ = self.remote_source("participants")
         first = int(participants.options.get("first", 1))
         last = int(participants.options.get("last", 107))
+        participant_ids = tuple(f"p{participant:03d}" for participant in range(first, last + 1))
+        filenames = tuple(f"{participant_id}.zip" for participant_id in participant_ids)
+        checksums = require_checksum_map(
+            participants.artifact_checksums,
+            filenames,
+            label="EARS participants",
+        )
         participant_requests = [
             DownloadRequest(
-                url=participants_url.format(speaker=f"p{participant:03d}"),
-                destination=self.download_dir / f"p{participant:03d}.zip",
+                url=participants_url.format(speaker=participant_id),
+                destination=self.download_dir / filename,
+                checksum=checksums[filename],
             )
-            for participant in range(first, last + 1)
+            for participant_id, filename in zip(participant_ids, filenames, strict=True)
         ]
         participant_archives = download_many(
             participant_requests,
@@ -40,10 +54,15 @@ class EARSAdapter(DatasetAdapter):
             )
 
         metadata, metadata_url, metadata_filename = self.remote_source("metadata")
+        metadata_checksums = require_checksum_map(
+            metadata.artifact_checksums,
+            (metadata_filename,),
+            label="EARS metadata",
+        )
         metadata_archive = download_file(
             metadata_url,
             self.download_dir / metadata_filename,
-            checksum=metadata.checksum,
+            checksum=metadata_checksums[metadata_filename],
         )
         metadata_root = self.extracted_dir / "metadata"
         safe_extract_zip(metadata_archive, metadata_root)

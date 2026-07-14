@@ -76,7 +76,11 @@ class DatasetAdapter(ABC):
             return None
         sources: list[dict[str, Any]] = []
         for source in self.config.sources:
-            data = source.model_dump(mode="json", exclude={"path"}, exclude_none=True)
+            data = source.model_dump(
+                mode="json",
+                exclude={"path", "artifact_checksums"},
+                exclude_none=True,
+            )
             if source.path is not None:
                 path = source.path
                 if path.is_file():
@@ -131,11 +135,18 @@ class DatasetAdapter(ABC):
                     f"Dataset {self.config.id!r} source {name!r} filename escapes "
                     f"its download directory: {filename!r}"
                 )
+            configured_checksum = source.checksum
+            if source.artifact_checksums:
+                configured_checksum = dataset_io.require_checksum_map(
+                    source.artifact_checksums,
+                    (filename,),
+                    label=f"dataset {self.config.id!r} source {name!r}",
+                )[filename]
             requests.append(
                 dataset_io.DownloadRequest(
                     url=url,
                     destination=destination,
-                    checksum=source.checksum,
+                    checksum=configured_checksum,
                 )
             )
         return dataset_io.download_many(

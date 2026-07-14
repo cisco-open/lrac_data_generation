@@ -30,6 +30,7 @@ class AudioMetadata:
     sample_rate_hz: int
     channels: int
     num_frames: int
+    format: str
     subtype: str
     sha256: str
     identity: FileIdentity | None = None
@@ -73,6 +74,7 @@ class _JournalRecord:
     sample_rate_hz: int
     channels: int
     num_frames: int
+    format: str
     subtype: str
     identity: FileIdentity
 
@@ -86,6 +88,7 @@ class _JournalRecord:
         sample_rate_hz = value.get("sample_rate_hz")
         channels = value.get("channels")
         num_frames = value.get("num_frames")
+        format_value = value.get("format", "WAV")
         subtype = value.get("subtype")
         identity = FileIdentity.from_dict(value.get("identity"))
         if identity is None:
@@ -105,6 +108,7 @@ class _JournalRecord:
             and isinstance(sample_rate_hz, int)
             and isinstance(channels, int)
             and isinstance(num_frames, int)
+            and isinstance(format_value, str)
             and isinstance(subtype, str)
             and identity is not None
         ):
@@ -118,6 +122,7 @@ class _JournalRecord:
             sample_rate_hz=sample_rate_hz,
             channels=channels,
             num_frames=num_frames,
+            format=format_value,
             subtype=subtype,
             identity=identity,
         )
@@ -131,6 +136,7 @@ class _JournalRecord:
             "sample_rate_hz": self.sample_rate_hz,
             "channels": self.channels,
             "num_frames": self.num_frames,
+            "format": self.format,
             "subtype": self.subtype,
             "identity": self.identity.as_dict(),
         }
@@ -186,6 +192,7 @@ def probe(path: Path, *, include_checksum: bool = True) -> AudioMetadata:
         sample_rate_hz=info.samplerate,
         channels=info.channels,
         num_frames=info.frames,
+        format=info.format,
         subtype=info.subtype,
         sha256=checksum,
         identity=FileIdentity.from_stat(after),
@@ -254,6 +261,7 @@ def _verify_temporary(pending: _PendingMaterialization) -> AudioMetadata:
     if (
         written.sample_rate_hz != task.sample_rate_hz
         or written.channels != task.channels
+        or written.format != "WAV"
         or written.subtype != "PCM_16"
     ):
         raise ValueError(f"materialized audio failed validation: {task.source}")
@@ -287,6 +295,7 @@ def _publish_verified(
                 sample_rate_hz=metadata.sample_rate_hz,
                 channels=metadata.channels,
                 num_frames=metadata.num_frames,
+                format=metadata.format,
                 subtype=metadata.subtype,
                 identity=metadata.identity
                 or FileIdentity.from_stat(pending.task.destination.stat()),
@@ -469,6 +478,7 @@ def _reusable_metadata(
         state.fingerprint != expected_fingerprint
         or state.sample_rate_hz != sample_rate_hz
         or state.channels != channels
+        or state.format != "WAV"
         or state.subtype != "PCM_16"
     ):
         return None
@@ -483,6 +493,7 @@ def _reusable_metadata(
         sample_rate_hz=state.sample_rate_hz,
         channels=state.channels,
         num_frames=state.num_frames,
+        format=state.format,
         subtype=state.subtype,
         sha256=state.output_sha256,
         identity=state.identity,

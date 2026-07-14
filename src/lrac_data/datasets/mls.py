@@ -9,7 +9,13 @@ from lrac_data.models import InventoryItem, MediaKind
 
 from .base import DatasetAdapter
 from .common import read_transcript_gzip, require_unique
-from .io import DownloadRequest, download_file, download_many, safe_extract_tar
+from .io import (
+    DownloadRequest,
+    download_file,
+    download_many,
+    require_checksum_map,
+    safe_extract_tar,
+)
 
 
 class MLSAdapter(DatasetAdapter):
@@ -30,24 +36,41 @@ class MLSAdapter(DatasetAdapter):
         source = self.source("track1_shards")
         if source.url is None:
             raise ValueError("MLS track1_shards source requires a URL template")
-        requests: list[DownloadRequest] = []
-        languages: list[str] = []
+        artifacts: list[tuple[str, str, str, Path]] = []
         for language in self.option("languages", ["german", "french", "spanish"]):
             shard_list = self._shard_list(language)
             if not shard_list.is_file():
                 raise FileNotFoundError(f"MLS shard list is missing: {shard_list}")
             for remote_path in shard_list.read_text(encoding="utf-8").splitlines():
-                if not remote_path.strip():
+                remote_path = remote_path.strip()
+                if not remote_path:
                     continue
-                path = Path(remote_path.strip())
+                path = Path(remote_path)
                 archive_name = f"{path.parent.name}_{path.name}"
-                requests.append(
-                    DownloadRequest(
-                        url=source.url.format(path=remote_path.strip()),
-                        destination=self.download_dir / language / archive_name,
+                checksum_key = f"{language}/{archive_name}"
+                artifacts.append(
+                    (
+                        language,
+                        remote_path,
+                        checksum_key,
+                        self.download_dir / language / archive_name,
                     )
                 )
-                languages.append(language)
+
+        checksums = require_checksum_map(
+            source.artifact_checksums,
+            (checksum_key for _, _, checksum_key, _ in artifacts),
+            label="MLS track1_shards",
+        )
+        requests = [
+            DownloadRequest(
+                url=source.url.format(path=remote_path),
+                destination=destination,
+                checksum=checksums[checksum_key],
+            )
+            for _, remote_path, checksum_key, destination in artifacts
+        ]
+        languages = [language for language, _, _, _ in artifacts]
 
         archives = download_many(
             requests,

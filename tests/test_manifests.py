@@ -5,7 +5,12 @@ from pathlib import Path, PurePosixPath
 
 import pytest
 
-from lrac_data.manifests import ManifestError, read_manifest, write_manifest
+from lrac_data.manifests import (
+    ManifestError,
+    read_manifest,
+    write_manifest,
+    write_ordered_manifest,
+)
 from lrac_data.models import ManifestItem, MediaKind, Split, qualify_id
 
 
@@ -46,6 +51,23 @@ def test_manifest_is_byte_deterministic_and_sorted_by_stable_id(tmp_path: Path) 
         sort_keys=True,
     )
     assert read_manifest(first) == (a, b)
+
+
+def test_ordered_manifest_streams_atomically_and_rejects_disorder(tmp_path: Path) -> None:
+    destination = tmp_path / "manifest.jsonl"
+    destination.write_text("original\n", encoding="utf-8")
+    consumed: list[str] = []
+
+    def records():
+        for source_id in ("a", "c", "b"):
+            consumed.append(source_id)
+            yield _manifest_item(source_id)
+
+    with pytest.raises(ManifestError, match="not strictly ordered"):
+        write_ordered_manifest(destination, records())
+
+    assert consumed == ["a", "c", "b"]
+    assert destination.read_text(encoding="utf-8") == "original\n"
 
 
 def test_manifest_rejects_duplicate_ids_before_publication(tmp_path: Path) -> None:

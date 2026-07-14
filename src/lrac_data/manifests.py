@@ -33,9 +33,7 @@ def write_jsonl(
 
     destination = Path(path)
     lines = sorted(_canonical_line(record) for record in records)
-    contents = "".join(f"{line}\n" for line in lines)
-    _atomic_write_text(destination, contents)
-    return destination
+    return _write_canonical_lines(destination, lines)
 
 
 def read_jsonl(path: str | Path, model_type: type[ModelT]) -> tuple[ModelT, ...]:
@@ -67,10 +65,28 @@ def read_jsonl(path: str | Path, model_type: type[ModelT]) -> tuple[ModelT, ...]
 def write_manifest(path: str | Path, records: Iterable[ManifestItem]) -> Path:
     """Atomically write a stable-ID-sorted final manifest."""
 
-    materialized = tuple(records)
-    _ensure_unique_ids(materialized, path)
-    ordered = sorted(materialized, key=lambda record: record.id)
-    return _write_ordered_jsonl(Path(path), ordered)
+    return write_ordered_manifest(path, sorted(records, key=lambda record: record.id))
+
+
+def write_ordered_manifest(path: str | Path, records: Iterable[ManifestItem]) -> Path:
+    """Atomically stream records that are already strictly ordered by stable ID."""
+
+    destination = Path(path)
+    previous_id: str | None = None
+
+    def lines() -> Iterable[str]:
+        nonlocal previous_id
+        for record in records:
+            if record.id == previous_id:
+                raise ManifestError(f"{destination}: duplicate manifest ID {record.id!r}")
+            if previous_id is not None and record.id < previous_id:
+                raise ManifestError(
+                    f"{destination}: manifest IDs are not strictly ordered: {record.id!r}"
+                )
+            previous_id = record.id
+            yield _canonical_line(record)
+
+    return _write_canonical_lines(destination, lines())
 
 
 def read_manifest(path: str | Path) -> tuple[ManifestItem, ...]:
@@ -89,9 +105,25 @@ def _ensure_unique_ids(records: Iterable[ManifestItem], path: str | Path) -> Non
         seen.add(record.id)
 
 
-def _write_ordered_jsonl(path: Path, records: Iterable[BaseModel]) -> Path:
-    contents = "".join(f"{_canonical_line(record)}\n" for record in records)
-    _atomic_write_text(path, contents)
+def _write_canonical_lines(path: Path, lines: Iterable[str]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+            for line in lines:
+                stream.write(line)
+                stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
     return path
 
 
@@ -119,29 +151,11 @@ def _json_default(value: Any) -> Any:
     raise TypeError(f"value of type {type(value).__name__} is not JSON serializable")
 
 
-def _atomic_write_text(path: Path, contents: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        dir=path.parent,
-    )
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(contents)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    except BaseException:
-        temporary.unlink(missing_ok=True)
-        raise
-
-
 __all__ = [
     "ManifestError",
     "read_jsonl",
     "read_manifest",
     "write_jsonl",
     "write_manifest",
+    "write_ordered_manifest",
 ]

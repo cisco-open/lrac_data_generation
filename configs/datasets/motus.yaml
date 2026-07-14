@@ -3,6 +3,8 @@ adapter: motus
 release: "Zenodo record 4923187"
 license: "CC BY 4.0"
 media_kinds: [rir]
+expected_inventory:
+  rir: 3320
 sources:
   - name: raw_rirs
     url: "https://zenodo.org/records/4923187/files/raw_rirs.zip?download=1"

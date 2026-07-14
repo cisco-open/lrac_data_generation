@@ -14,6 +14,7 @@ from .io import (
     DownloadRequest,
     download_file,
     download_many,
+    require_checksum_map,
     safe_extract_multipart_tar,
     safe_extract_tar,
 )
@@ -51,14 +52,19 @@ class DNS5Adapter(DatasetAdapter):
                 "au",
             ],
         )
-        checksums = speech.options.get("checksums", {})
+        filenames = tuple(f"read_speech.tgz.part{suffix}" for suffix in suffixes)
+        checksums = require_checksum_map(
+            speech.artifact_checksums,
+            filenames,
+            label="DNS5 read_speech_parts",
+        )
         speech_requests = [
             DownloadRequest(
                 url=speech_url.format(suffix=suffix),
-                destination=self.download_dir / "speech" / f"read_speech.tgz.part{suffix}",
-                checksum=checksums.get(suffix),
+                destination=self.download_dir / "speech" / filename,
+                checksum=checksums[filename],
             )
-            for suffix in suffixes
+            for suffix, filename in zip(suffixes, filenames, strict=True)
         ]
         part_paths = download_many(
             speech_requests,
@@ -75,11 +81,16 @@ class DNS5Adapter(DatasetAdapter):
         for source in noise_sources:
             if source.url is None or source.filename is None:
                 raise ValueError(f"DNS5 source {source.name!r} requires url and filename")
+            checksums = require_checksum_map(
+                source.artifact_checksums,
+                (source.filename,),
+                label=f"DNS5 {source.name}",
+            )
             noise_requests.append(
                 DownloadRequest(
                     url=source.url,
                     destination=self.download_dir / "noise" / source.filename,
-                    checksum=source.checksum,
+                    checksum=checksums[source.filename],
                 )
             )
 
@@ -104,10 +115,15 @@ class DNS5Adapter(DatasetAdapter):
             list(executor.map(extract_noise, range(len(noise_archives))))
 
         rir, rir_url, rir_filename = self.remote_source("impulse_responses")
+        rir_checksums = require_checksum_map(
+            rir.artifact_checksums,
+            (rir_filename,),
+            label="DNS5 impulse_responses",
+        )
         rir_archive = download_file(
             rir_url,
             self.download_dir / rir_filename,
-            checksum=rir.checksum,
+            checksum=rir_checksums[rir_filename],
         )
         safe_extract_tar(rir_archive, self.extracted_dir)
 

@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from lrac_data.config import ConfigError, load_edition_config
+from lrac_data.config import (
+    ConfigError,
+    load_edition_config,
+    load_recorded_edition_config,
+)
 from lrac_data.models import ExclusionPartition, MediaKind
 
 
@@ -62,6 +66,51 @@ exclusion_files:
 """,
         encoding="utf-8",
     )
+
+
+def test_load_recorded_edition_config_uses_exact_repo_relative_path(
+    tmp_path: Path,
+) -> None:
+    _write_config_fixture(tmp_path)
+    alternate = tmp_path / "configs" / "alternate" / "fixture.yaml"
+    alternate.parent.mkdir()
+    alternate.write_text(
+        (tmp_path / "configs" / "editions" / "fixture.yaml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    loaded = load_recorded_edition_config("repo:configs/alternate/fixture.yaml", repo_root=tmp_path)
+
+    assert loaded.path == alternate.resolve()
+
+
+def test_load_recorded_edition_config_rejects_unsafe_paths(tmp_path: Path) -> None:
+    _write_config_fixture(tmp_path)
+
+    with pytest.raises(ConfigError, match="is not safe"):
+        load_recorded_edition_config("repo:../fixture.yaml", repo_root=tmp_path)
+    with pytest.raises(ConfigError, match="is not safe"):
+        load_recorded_edition_config(r"repo:configs\\editions\\fixture.yaml", repo_root=tmp_path)
+    with pytest.raises(ConfigError, match="only a filename"):
+        load_recorded_edition_config(
+            "external:nested/fixture.yaml",
+            repo_root=tmp_path,
+            edition_config=tmp_path / "configs" / "editions" / "fixture.yaml",
+        )
+
+
+def test_load_recorded_external_config_requires_matching_filename(
+    tmp_path: Path,
+) -> None:
+    _write_config_fixture(tmp_path)
+    config = tmp_path / "configs" / "editions" / "fixture.yaml"
+
+    with pytest.raises(ConfigError, match="requires --edition-config"):
+        load_recorded_edition_config("external:fixture.yaml", repo_root=tmp_path)
+    with pytest.raises(ConfigError, match="does not match recorded external filename"):
+        load_recorded_edition_config(
+            "external:other.yaml", repo_root=tmp_path, edition_config=config
+        )
 
 
 def test_load_edition_expands_curation_csvs_and_groups_exclusions(

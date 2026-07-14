@@ -5,7 +5,9 @@ adapter. Configuration owns upstream identity; the adapter owns source-specific
 inventory parsing.
 
 1. Add a dataset YAML file with its adapter name, upstream release, URLs,
-   archive checksums, license, and expected extracted paths.
+   archive checksums, license, expected extracted paths, and canonical
+   `expected_inventory` counts by media kind. Templated sources must provide
+   an exact `artifact_checksums` mapping for every expanded artifact.
 2. Implement the adapter's `fetch` and `inventory` hooks. Use
    `download_remote_sources("source-name", ...)` for ordinary fixed-name
    downloads and `build_file_inventory` for stem-based file trees; keep source-specific

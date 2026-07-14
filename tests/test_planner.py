@@ -203,6 +203,7 @@ def test_real_2026_plan_resolves_both_selections_without_writes(
         assert sum(dataset.exclusion_targets for dataset in report.datasets) > 2_500
         assert report.public_evaluation is not None
         assert report.remote_checks == ()
+        assert report.integrity_warnings == ()
         for executable in ("ffmpeg", "git", "zip"):
             issue = f"required executable is not installed: {executable}"
             assert (issue in report.unresolved) is (not report.requirements[executable])
@@ -219,5 +220,8 @@ def test_real_remote_templates_expand_every_artifact() -> None:
     for adapter, count in expected.items():
         dataset = next(item for item in config.datasets if item.adapter == adapter)
         templated = next(source for source in dataset.sources if "{" in (source.url or ""))
+        checksums = templated.artifact_checksums
 
         assert len(_remote_artifacts(dataset, templated)) == count
+        assert len(checksums) == count
+        assert all(len(value) == 64 for value in checksums.values())
