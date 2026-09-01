@@ -1,0 +1,308 @@
+{
+  "edition": "2026",
+  "input": {
+    "curated_eligible_items": 957196,
+    "evaluation_items": 1515,
+    "evaluation_source_id_sha256": "02c19c1f59e3ab29b54422dd42b395d2319b24a57894a390b557658d1dd05c10",
+    "inventory_items": 1791790
+  },
+  "policy": {
+    "group_order": "sha256(NUL-joined namespace, seed, group, stratum, group_id)",
+    "hash_namespace": "lrac-2026-validation",
+    "item_order": "sha256(NUL-joined namespace, seed, item, stratum, source_id)",
+    "seed": 2026,
+    "speech_disjointness": "speaker where available",
+    "strata": [
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "ar",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/ar",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "de",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/de",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "es",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/es",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "fa",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/fa",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "fr",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/fr",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "it",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/it",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "ja",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/ja",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "pt",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/pt",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "ru",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/ru",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "sw",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/sw",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "zh-CN",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/zh-CN",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "zh-HK",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/zh-HK",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "commonvoice_v26",
+        "group_mode": "speaker",
+        "language": "zh-TW",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "commonvoice_v26/zh-TW",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "dns5",
+        "group_mode": "speaker",
+        "language": "en",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "dns5/en",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "ears",
+        "group_mode": "speaker",
+        "language": "en",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "ears/en",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "globe",
+        "group_mode": "speaker",
+        "language": "en",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "globe/en",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "libritts",
+        "group_mode": "speaker",
+        "language": "en",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "libritts/en",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "mls",
+        "group_mode": "speaker",
+        "language": "french",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "mls/french",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "mls",
+        "group_mode": "speaker",
+        "language": "german",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "mls/german",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "mls",
+        "group_mode": "speaker",
+        "language": "spanish",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "mls/spanish",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "openslr93",
+        "group_mode": "speaker",
+        "language": "cmn",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "openslr93/cmn",
+        "target": 250
+      },
+      {
+        "contribution_cap": 25,
+        "dataset": "vctk",
+        "group_mode": "speaker",
+        "language": "en",
+        "media_kind": "speech",
+        "minimum_groups": 10,
+        "name": "vctk/en",
+        "target": 250
+      },
+      {
+        "contribution_cap": 1,
+        "dataset": "dns5",
+        "group_mode": "item",
+        "language": null,
+        "media_kind": "noise",
+        "minimum_groups": 100,
+        "name": "dns5/noise",
+        "target": 100
+      },
+      {
+        "contribution_cap": 1,
+        "dataset": "fma",
+        "group_mode": "item",
+        "language": null,
+        "media_kind": "noise",
+        "minimum_groups": 100,
+        "name": "fma/noise",
+        "target": 100
+      },
+      {
+        "contribution_cap": 1,
+        "dataset": "fsd50k",
+        "group_mode": "item",
+        "language": null,
+        "media_kind": "noise",
+        "minimum_groups": 100,
+        "name": "fsd50k/noise",
+        "target": 100
+      },
+      {
+        "contribution_cap": 1,
+        "dataset": "wham",
+        "group_mode": "item",
+        "language": null,
+        "media_kind": "noise",
+        "minimum_groups": 100,
+        "name": "wham/noise",
+        "target": 100
+      },
+      {
+        "contribution_cap": 1,
+        "dataset": "dns5",
+        "group_mode": "item",
+        "language": null,
+        "media_kind": "rir",
+        "minimum_groups": 100,
+        "name": "dns5/rir",
+        "target": 100
+      },
+      {
+        "contribution_cap": 1,
+        "dataset": "motus",
+        "group_mode": "item",
+        "language": null,
+        "media_kind": "rir",
+        "minimum_groups": 100,
+        "name": "motus/rir",
+        "target": 100
+      }
+    ]
+  },
+  "result": {
+    "exclusions_csv_sha256": "50a2dd999e784e3947c8524f73065fcd661064505a494588574c21fcd0b9489c",
+    "validation_source_id_sha256": "7cc8f91b6996c3853894d0a2be61c4f9a14bd4d3b086c2c81c6e47f5d1c00cef",
+    "validation_source_ids": 6100,
+    "withheld_evaluation_alias_source_id_sha256": "29fbe5aecc354cd0eab0b4857218a4e09ce9a38d4d65a54f28287079a76006e6",
+    "withheld_evaluation_alias_source_ids": 138,
+    "withheld_source_id_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "withheld_source_ids": 0,
+    "withheld_speakers": 669
+  }
+}

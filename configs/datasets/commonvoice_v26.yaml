@@ -1,0 +1,35 @@
+id: commonvoice_v26
+release: "Common Voice 26.0"
+license: "CC0-1.0"
+media_kinds: [speech]
+
+# Mozilla Data Collective exposes authenticated release archives after one-time
+# terms acceptance. The adapter derives each dataset ID from its landing URL and
+# uses MDC_API_KEY to obtain the temporary download URL and publisher checksum.
+sources:
+  - name: ar
+    url: https://mozilladatacollective.com/datasets/cmqinoh7z00wsnr07v5ixz5uo
+  - name: de
+    url: https://mozilladatacollective.com/datasets/cmqim3xpi00t6nr07k0myqtkr
+  - name: es
+    url: https://mozilladatacollective.com/datasets/cmqim2spa00synr071fcp7av0
+  - name: fa
+    url: https://mozilladatacollective.com/datasets/cmqinhw5100v8nr07gyg5gi4v
+  - name: fr
+    url: https://mozilladatacollective.com/datasets/cmqim41b000tanr07q9btypkc
+  - name: it
+    url: https://mozilladatacollective.com/datasets/cmqini14100vmnq07309ocknr
+  - name: ja
+    url: https://mozilladatacollective.com/datasets/cmqim4lxy00tunr07cjkcupeg
+  - name: pt
+    url: https://mozilladatacollective.com/datasets/cmqinmnkf00w8nr07hkbbxgw7
+  - name: ru
+    url: https://mozilladatacollective.com/datasets/cmqinj9g500vsnr07qf4hmr3j
+  - name: sw
+    url: https://mozilladatacollective.com/datasets/cmqim4c1000tmnr07zq3vwhor
+  - name: zh
+    url: https://mozilladatacollective.com/datasets/cmqim47x700tunq074za20dq1
+  - name: zh-HK
+    url: https://mozilladatacollective.com/datasets/cmqinoe3p00wonr07fumnrmtg
+  - name: zh-TW
+    url: https://mozilladatacollective.com/datasets/cmqinooq000x0nr07b4p4ct4q

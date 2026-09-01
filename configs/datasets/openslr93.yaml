@@ -1,0 +1,11 @@
+id: openslr93
+release: "OpenSLR 93 / AISHELL-3"
+license: "Apache License 2.0"
+media_kinds: [speech]
+expected_inventory:
+  speech: 88035
+sources:
+  - name: corpus
+    url: "https://www.openslr.org/resources/93/data_aishell3.tgz"
+    filename: "data_aishell3.tgz"
+    checksum: "md5:6833e9dcb47709d4e153e2f669e5ddc8"

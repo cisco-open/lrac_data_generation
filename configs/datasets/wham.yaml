@@ -1,0 +1,11 @@
+id: wham
+release: "high_res_wham"
+license: "CC BY-NC 4.0"
+media_kinds: [noise]
+expected_inventory:
+  noise: 1578
+sources:
+  - name: high_res_wham
+    url: "https://my-bucket-a8b4b49c25c811ee9a7e8bba05fa24c7.s3.amazonaws.com/high_res_wham.zip"
+    filename: "high_res_wham.zip"
+    checksum: "md5:b11cff68963f24acdefc64aa42766fa2"

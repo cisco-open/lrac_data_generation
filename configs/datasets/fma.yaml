@@ -1,0 +1,11 @@
+id: fma
+release: "FMA medium"
+license: "Per-track Creative Commons licenses recorded in FMA metadata"
+media_kinds: [noise]
+expected_inventory:
+  noise: 25000
+sources:
+  - name: medium
+    url: "https://os.unil.cloud.switch.ch/fma/fma_medium.zip"
+    filename: "fma_medium.zip"
+    checksum: "sha1:c67b69ea232021025fca9231fc1c7c1a063ab50b"

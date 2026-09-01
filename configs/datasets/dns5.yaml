@@ -1,0 +1,73 @@
+id: dns5
+release: "5"
+license: "Microsoft DNS Challenge dataset terms (see https://github.com/microsoft/DNS-Challenge)"
+media_kinds: [speech, noise, rir]
+expected_inventory:
+  speech: 306054
+  noise: 63810
+  rir: 60248
+sources:
+  - name: read_speech_parts
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/Track1_Headset/read_speech.tgz.part{suffix}"
+    artifact_checksums:
+      "read_speech.tgz.partaa": "665e232a12b4316a1968ae682073f40ec03b5ac71b3580fd77d10807731c467e"
+      "read_speech.tgz.partab": "e28df5ead0131820d3c3f6f11676922f778f952fa6f116bfe53c2004abb42b7e"
+      "read_speech.tgz.partac": "5170d2ac307e2f95ddaf06293b3f4444b2b08c5ad695c6401510e627f5ac3a87"
+      "read_speech.tgz.partad": "e8ea7a5fcd00e339d16da4783da49580a47695c16c12f8fe81cb6f551a8e3d2a"
+      "read_speech.tgz.partae": "21402d69c1be45aaa61d0d4b2407581191a0f9e5a4b05f79ad3681c40a1f7fd5"
+      "read_speech.tgz.partaf": "a4bc7e20a751026d099032e66efc8b1194091f759baedb6fc4554b6ded39c1c5"
+      "read_speech.tgz.partag": "abbe1f4e0ce0141c95f652d5531e7ce1beb9904fec25ad0c428d9f1beb9c904e"
+      "read_speech.tgz.partah": "4e665f59f519190187bf27da4a9fc1386a0fa40fb6f96b1d9ca089cf053c8172"
+      "read_speech.tgz.partai": "1e8e597fe59ebd26f011d15f186a813631a0e6af7f5617e6f23e8529014f65e6"
+      "read_speech.tgz.partaj": "a5c265031c4a920746807ca441aa54bd8054275070eb1a71ece9a214bff1fdd4"
+      "read_speech.tgz.partak": "614b037f4aad6eacdbdcd71cad0d786dd8afcf7d2cfd820078cced123ede8fea"
+      "read_speech.tgz.partal": "532d95945f9332fe9c20c08d7b51d34513388fa8d793bdfba85bb39eeb9f7e8b"
+      "read_speech.tgz.partam": "8cb70ba33d288c0db01a88ca1d551d775d4234891efd9dd79a4fe55d2cfcf4c5"
+      "read_speech.tgz.partan": "9f47147b8291e60f6eec52501c4166f84884f5d8c8964feaaf2c48714b15acd8"
+      "read_speech.tgz.partao": "a6aa832fe91f44412b185a113697febd076e74d1e1120786b5283ff7680310da"
+      "read_speech.tgz.partap": "368e35dad5d151cbe1d85d9ac70eb2bdd55f9567e7b69af079320e1d8239dc4e"
+      "read_speech.tgz.partaq": "6510bb858e4ae471f4414ee3e20060cb30046c2a3ed6aaef441053ef472f3e02"
+      "read_speech.tgz.partar": "cda35276e4a38a369d91d1bdc571a0b4ae8a5ba31158f94d34d80334a9a03815"
+      "read_speech.tgz.partas": "9fb6894b76fc66acf1e3ad4d15f6ac1d21b88ff058317b9bfe902e824ae415b6"
+      "read_speech.tgz.partat": "7e180ec48c12ab3f8ec430fb35ce29f3f13f6531f0c816076258da6766e0b86b"
+      "read_speech.tgz.partau": "0e844de09b9328c9a63c6b4489eea67af046e6782ee6f4cb4e31c0fc20d1d630"
+  - name: noise_audioset_000
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_000.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_000.tar.bz2"
+    checksum: "sha256:2c8cd05b1d391fbc9d7177dc2b3dc49d725fdcef458f2f5cb35164f1571d23c5"
+  - name: noise_audioset_001
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_001.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_001.tar.bz2"
+    checksum: "sha256:d1dd294394f4d786ff4aa26855ef81c704d0cbcea487773b80f431ff883faf0a"
+  - name: noise_audioset_002
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_002.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_002.tar.bz2"
+    checksum: "sha256:c54ce1d9313c8eef2547d2c16f181159b54ebe4c760380052e8c62ecf0af58ad"
+  - name: noise_audioset_003
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_003.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_003.tar.bz2"
+    checksum: "sha256:af08c0ffe5e7080ae4f930bc7fd974e8e3fc458da8e45e28072f6e77f46062c4"
+  - name: noise_audioset_004
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_004.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_004.tar.bz2"
+    checksum: "sha256:6629b30a8c3db58ba3817c269ed4cebd29df8fa3f60242069de1600a42e1245f"
+  - name: noise_audioset_005
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_005.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_005.tar.bz2"
+    checksum: "sha256:93230eb4cc3684f682c7e93142342d95e00360d88b30d9ca5310672e78db6ce5"
+  - name: noise_audioset_006
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.audioset_006.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.audioset_006.tar.bz2"
+    checksum: "sha256:0abf14cb7a8db239719b7badf4e7dd60c4a41a675214723820ef372c61cf8e95"
+  - name: noise_freesound_000
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.freesound_000.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.freesound_000.tar.bz2"
+    checksum: "sha256:715761950e30d36d5a665f0d61a032a127f9f0978b89be7c83a2aa2b454f4c3d"
+  - name: noise_freesound_001
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/noise_fullband/datasets_fullband.noise_fullband.freesound_001.tar.bz2"
+    filename: "datasets_fullband.noise_fullband.freesound_001.tar.bz2"
+    checksum: "sha256:f5fddbb36864053e9dba696f2d63a85c20635d0b4a5701390e8011ad17f8667b"
+  - name: impulse_responses
+    url: "https://dnschallengepublic.blob.core.windows.net/dns5archive/V5_training_dataset/datasets_fullband.impulse_responses_000.tar.bz2"
+    filename: "datasets_fullband.impulse_responses_000.tar.bz2"
+    checksum: "sha256:48ac3ddde25ce410214c94c851d402b8e28f553b010e3d6aa0926460241e9059"

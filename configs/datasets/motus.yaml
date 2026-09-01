@@ -1,0 +1,11 @@
+id: motus
+release: "Zenodo record 4923187"
+license: "CC BY 4.0"
+media_kinds: [rir]
+expected_inventory:
+  rir: 3320
+sources:
+  - name: raw_rirs
+    url: "https://zenodo.org/records/4923187/files/raw_rirs.zip?download=1"
+    filename: "raw_rirs.zip"
+    checksum: "md5:41f666a6e454e95d926712f1db9018cb"

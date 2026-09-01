@@ -1,0 +1,78 @@
+edition: "2026"
+seed: 2026
+
+audio:
+  sample_rate_hz: 24000
+  channels:
+    speech: preserve
+    noise: preserve
+    rir: preserve
+  sample_format: float32
+  container: wav
+
+public_evaluation:
+  id: lrac-2025-open-evaluation
+  repository_url: https://github.com/cisco/multilingual-speech-testing.git
+  revision: 1a1d300bf2215c49fb562d4d842e42ad617caea9
+  subdirectory: LRAC-2025-test-data
+  open_subdirectory: open-test-set
+  test_subdirectory: blind-test-set/track_1
+  tracks: [track_1, track_2]
+  conditions: [clean, noisy, reverb]
+  test_conditions: [clean, realworld, simultaneous_talkers]
+
+datasets:
+  - commonvoice_v26
+  - dns5
+  - ears
+  - fma
+  - fsd50k
+  - globe
+  - libritts
+  - mls
+  - motus
+  - openslr93
+  - vctk
+  - wham
+
+exclusion_files:
+  - metadata/editions/2026/exclusions.csv
+  - metadata/editions/2026/validation/exclusions.csv
+
+curation_files:
+  - dataset: commonvoice_v26
+    media_kind: speech
+    path: metadata/editions/2026/curation/commonvoice_v26_speech.csv
+  - dataset: dns5
+    media_kind: speech
+    path: metadata/editions/2026/curation/dns5_speech.csv
+  - dataset: dns5
+    media_kind: noise
+    path: metadata/editions/2026/curation/dns5_noise.csv
+  - dataset: ears
+    media_kind: speech
+    path: metadata/editions/2026/curation/ears_speech.csv
+  - dataset: fma
+    media_kind: noise
+    path: metadata/editions/2026/curation/fma_noise.csv
+  - dataset: fsd50k
+    media_kind: noise
+    path: metadata/editions/2026/curation/fsd50k_noise.csv
+  - dataset: globe
+    media_kind: speech
+    path: metadata/editions/2026/curation/globe_speech.csv
+  - dataset: libritts
+    media_kind: speech
+    path: metadata/editions/2026/curation/libritts_speech.csv
+  - dataset: mls
+    media_kind: speech
+    path: metadata/editions/2026/curation/mls_speech.csv
+  - dataset: openslr93
+    media_kind: speech
+    path: metadata/editions/2026/curation/openslr93_speech.csv
+  - dataset: vctk
+    media_kind: speech
+    path: metadata/editions/2026/curation/vctk_speech.csv
+  - dataset: wham
+    media_kind: noise
+    path: metadata/editions/2026/curation/wham_noise.csv
