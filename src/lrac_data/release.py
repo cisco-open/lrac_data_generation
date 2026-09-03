@@ -400,8 +400,9 @@ normalization, limiting, or gain adjustment. Channel handling by media kind: {po
 
 The collection contains {hours:,.3f} hours of audio. Canonical JSONL manifests
 are under `manifests/`; matching ESPnet/Kaldi data directories are under
-`kaldi/`, with audio paths relative to this release root. Invoke consumers from
-this directory or resolve those paths against it. See `release.json` for the
+`kaldi/`, with portable audio paths relative to this release root. Software that
+requires absolute paths should regenerate the Kaldi directories with `export-kaldi`
+as documented in the data-preparation repository. See `release.json` for the
 machine-readable contract and `licenses/README.md` for upstream terms.
 """
     (staging / "README.md").write_text(text, encoding="utf-8")

@@ -18,11 +18,12 @@ from pathlib import Path
 from typing import TextIO
 
 from ..manifests import ManifestError
-from ..models import ManifestItem, MediaKind
+from ..models import ManifestItem, MediaKind, Split
 
 _GENERATED_FILENAMES = {
     "noise.scp",
     "rirs.scp",
+    "reference.scp",
     "spk1.scp",
     "spk2gender",
     "spk2utt",
@@ -181,6 +182,8 @@ def _write_generation(
                 (record.text or "<not-available>").replace("\r", " ").replace("\n", " ")
             )
             write("wav.scp", item_id, audio_path)
+            if record.split is Split.EVALUATION:
+                write("reference.scp", item_id, audio_path)
             write("spk1.scp", item_id, audio_path)
             write("utt2spk", item_id, speaker_id)
             write("text", item_id, utterance_text)

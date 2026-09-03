@@ -38,6 +38,13 @@ dataset. Speech is speaker-disjoint where speaker identities are available.
 Configured public evaluation material is published in a separate
 `open-evaluation` manifest.
 
+The `evaluation` partition contains source recordings reserved from training
+for constructing the LRAC 2025 evaluation material. It covers only the
+corresponding 2025 speech, noise, and RIR sources and does not add the new 2026
+languages. The `open-evaluation` partition instead contains the published LRAC
+2025 open test signals, paired with their references and organized by track and
+condition.
+
 The release also includes the LRAC 2025 Track 1 blind-test audio as three
 input-only test sets: `test-clean`, `test-realworld`, and
 `test-simultaneous-talkers`. Each has its own manifest and Kaldi data directory.
@@ -229,15 +236,31 @@ Inspect resumable preparation state separately:
 ## Kaldi And ESPnet
 
 `prepare` publishes a matching ESPnet/Kaldi data directory under
-`kaldi/<partition>/` for every manifest. Run the baseline from the release root
-so its relative `audio/...` entries resolve within the release.
+`kaldi/<partition>/` for every manifest. These bundled views use paths relative
+to the release root so the complete release remains portable. ESPnet recipes
+require absolute paths because they run from their own recipe directories; use
+`export-kaldi` to create the directories consumed by the baseline.
 
-To create a separately located export with absolute paths, use:
+The command defaults to absolute audio paths. Export every baseline partition
+as follows:
 
 ```bash
-.venv/bin/lrac-data export-kaldi \
-  --manifest "${LRAC_DATA_ROOT}/releases/LRAC-2026/manifests/train.jsonl" \
-  --output "${LRAC_DATA_ROOT}/lrac-kaldi/train"
+LRAC_RELEASE="${LRAC_DATA_ROOT}/releases/LRAC-2026"
+LRAC_ESP_DATA="${LRAC_DATA_ROOT}/lrac-espnet-data"
+
+export_split() {
+  .venv/bin/lrac-data export-kaldi \
+    --manifest "${LRAC_RELEASE}/manifests/$1.jsonl" \
+    --output "${LRAC_ESP_DATA}/$2"
+}
+
+export_split train train
+export_split validation train_validation
+export_split evaluation evaluation
+export_split open-evaluation open-evaluation
+export_split test-clean test-clean
+export_split test-realworld test-realworld
+export_split test-simultaneous-talkers test-simultaneous-talkers
 ```
 
 Both forms include the media-specific `noise.scp` and `rirs.scp` files used by
@@ -245,10 +268,8 @@ the LRAC ESPnet baseline when those media occur in the supplied manifest.
 `wav.scp` and the utterance sidecars contain speech only, matching the 2025
 baseline layout. The optional `spk2gender` is included only when every speech
 speaker has a Kaldi-supported `m` or `f` value.
-The `open-evaluation` view retains the six baseline condition directories, each
-with paired `wav.scp` and `reference.scp` files.
-The three input-only test views are independent Kaldi directories, each with its
-own `wav.scp` and standard speech sidecars.
+The `evaluation`, `open-evaluation`, and three test views include both `wav.scp`
+and `reference.scp`.
 
 ## License
 
