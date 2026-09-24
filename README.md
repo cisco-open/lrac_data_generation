@@ -17,7 +17,7 @@ The historical 2025 shell recipe remains available from the
 
 | Media | Sources |
 | --- | --- |
-| Speech | Common Voice 26.0, DNS Challenge 5, EARS, GLOBE, LibriTTS, MLS, OpenSLR93/AISHELL-3, VCTK 0.92 |
+| Speech | Common Voice 27.0 (default) or 26.0, DNS Challenge 5, EARS, GLOBE, LibriTTS, MLS, OpenSLR93/AISHELL-3, VCTK 0.92 |
 | Noise | DNS Challenge 5, FMA Medium, FSD50K, WHAM! |
 | Room impulse responses | DNS Challenge 5, MOTUS |
 
@@ -79,12 +79,23 @@ uv sync --locked --extra prep --no-dev
 
 ### Common Voice
 
-Common Voice 26.0 is downloaded through Mozilla Data Collective (MDC). MDC
-treats every locale as a separate dataset: open every dataset URL listed in
-[`configs/datasets/commonvoice_v26.yaml`](configs/datasets/commonvoice_v26.yaml)
-and complete its terms acceptance individually. Creating an API key does not
-grant access until those acceptances are complete. If you register or accept
-terms for a company or another organization, first confirm that you are
+> [!NOTE]
+> Following the earlier notice about changes to Common Voice 26.0 access, LRAC
+> 2026 permits both Common Voice 26.0 and 27.0. Existing 26.0 builds remain
+> valid, and access to the
+> [LRAC Common Voice 26.0 bundle](https://mozilladatacollective.com/datasets/cmufi5stj02y7ny0727487cu2)
+> can be requested through MDC. New builds use 27.0 by default. The same
+> checked-in curation and validation lists apply to both versions, and no other
+> dataset rules change.
+
+Common Voice is downloaded through Mozilla Data Collective (MDC). The default
+27.0 release treats every locale as a separate dataset: open each locale URL in
+[`configs/datasets/commonvoice.yaml`](configs/datasets/commonvoice.yaml) and
+complete its terms acceptance individually. The optional 26.0 bundle is declared in
+[`configs/datasets/commonvoice_v26.yaml`](configs/datasets/commonvoice_v26.yaml).
+Accept the terms for the release you intend to use. Creating an API key does not
+grant access until the relevant acceptance is complete. If you register or
+accept terms for a company or another organization, first confirm that you are
 authorized to bind that entity; see the
 [MDC Data Consumer Terms](https://mozilladatacollective.com/terms/consumers).
 
@@ -102,6 +113,16 @@ printf '\n'
 `plan` only checks whether the variable is set; it does not send the key or
 download data. `prepare` sends the key to MDC to request temporary archive URLs
 and publisher checksums.
+
+> [!NOTE]
+> A workspace created by the earlier Common Voice 26.0 configuration uses the
+> `commonvoice_v26` cache namespace. The current pipeline uses `commonvoice`, so
+> it does not reuse, relabel, or overwrite that unpacked data. It downloads the
+> selected release separately, and the old data continues to consume space.
+> Within the current pipeline, changing `--commonvoice-release` invalidates the
+> Common Voice inventory and extraction while retaining each release's download
+> cache under distinct filenames. A fresh workspace is not required, but both
+> cached releases consume space until removed.
 
 ### Hugging Face (Optional)
 
@@ -156,6 +177,9 @@ LRAC_DATA_ROOT=/data
   --output "${LRAC_DATA_ROOT}/releases/LRAC-2026" \
   --workers 8
 ```
+
+To use the LRAC Common Voice 26.0 bundle instead of the default 27.0 locale
+archives, add `--commonvoice-release 26` to either `plan` or `prepare`.
 
 Preparation always produces the complete configured release. Interrupted runs
 can resume from the workspace. The output directory becomes visible only after

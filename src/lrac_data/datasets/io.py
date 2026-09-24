@@ -22,7 +22,7 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from dataclasses import dataclass
@@ -623,6 +623,93 @@ def safe_extract_multipart_tar(
         _extract_tar_members(bundle, destination, strip_prefix=None)
     _mark_complete(marker, state)
     return destination
+
+
+def safe_extract_nested_tars(
+    archive: Path,
+    destination: Path,
+    members: Mapping[str, str],
+) -> Path:
+    """Extract named inner tar archives in one pass without materializing them."""
+
+    archive = Path(archive)
+    destination = Path(destination)
+    if not members:
+        raise ValueError("nested extraction requires at least one archive member")
+    for name, relative in members.items():
+        member_path = PurePosixPath(name)
+        path_segment = PurePosixPath(relative)
+        if (
+            not name
+            or not relative
+            or len(member_path.parts) != 1
+            or member_path.name in {".", ".."}
+            or len(path_segment.parts) != 1
+            or path_segment.name in {".", ".."}
+        ):
+            raise ValueError("nested archive names and destinations must be safe path segments")
+
+    state = canonical_json(
+        {
+            "archive": {
+                "path": str(archive.resolve()),
+                "identity": FileIdentity.from_stat(archive.stat()).as_dict(),
+            },
+            "members": dict(sorted(members.items())),
+        }
+    )
+    marker = destination.parent / f".{destination.name}.lrac-extract" / "nested-tars.json"
+    if (
+        destination.is_dir()
+        and not destination.is_symlink()
+        and _marker_matches(marker, state)
+        and all((destination / relative).is_dir() for relative in members.values())
+    ):
+        return destination
+
+    temporary = destination.parent / f".{destination.name}.nested-tars.part"
+    for candidate in (destination, temporary):
+        if candidate.is_symlink() or (candidate.exists() and not candidate.is_dir()):
+            raise UnsafeArchiveError(f"Nested extraction destination is unsafe: {candidate}")
+        if candidate.exists():
+            shutil.rmtree(candidate)
+    temporary.mkdir(parents=True)
+
+    found: set[str] = set()
+    try:
+        with tarfile.open(archive, "r:*") as outer:
+            for member in outer:
+                member_name = PurePosixPath(member.name).name
+                member_destination = members.get(member_name)
+                if member_destination is None:
+                    continue
+                if member_name in found:
+                    raise tarfile.ExtractError(f"Duplicate nested archive: {member_name!r}")
+                if not member.isfile():
+                    raise tarfile.ExtractError(
+                        f"Nested archive is not a file: {member_name!r}"
+                    )
+                source = outer.extractfile(member)
+                if source is None:
+                    raise tarfile.ExtractError(f"Could not read nested archive: {member_name!r}")
+                with source, tarfile.open(fileobj=source, mode="r|*") as inner:
+                    _extract_tar_members(
+                        inner,
+                        temporary / member_destination,
+                        strip_prefix=None,
+                    )
+                found.add(member_name)
+
+        missing = sorted(set(members) - found)
+        if missing:
+            raise tarfile.ExtractError("Missing nested archives: " + ", ".join(missing))
+        os.replace(temporary, destination)
+        _mark_complete(marker, state)
+        return destination
+    except BaseException:
+        if temporary.exists() and not temporary.is_symlink():
+            shutil.rmtree(temporary)
+        raise
 
 
 def _extract_tar_members(

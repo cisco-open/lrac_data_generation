@@ -1,7 +1,7 @@
 # Copyright 2026 Cisco Systems, Inc. and its affiliates
 # Apache-2.0
 
-"""Common Voice 26.0 download and inventory adapter."""
+"""Common Voice download and inventory adapter."""
 
 from __future__ import annotations
 
@@ -28,6 +28,21 @@ _MDC_DATASET_ID = re.compile(r"[A-Za-z0-9_-]+")
 _MDC_SHA256 = re.compile(r"(?:sha256:)?([0-9a-fA-F]{64})")
 _METADATA_TABLES = ("validated", "other", "invalidated")
 _ARCHIVE_LOCALES = {"zh": "zh-CN"}
+_SOURCE_LOCALES = (
+    "ar",
+    "de",
+    "es",
+    "fa",
+    "fr",
+    "it",
+    "ja",
+    "pt",
+    "ru",
+    "sw",
+    "zh",
+    "zh-HK",
+    "zh-TW",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +53,7 @@ class _Corpus:
     source_locale: str
 
 
-class CommonVoiceV26Adapter(DatasetAdapter):
+class CommonVoiceAdapter(DatasetAdapter):
     """Download and inventory the configured Common Voice locale archives.
 
     Mozilla Data Collective requires one-time terms acceptance and an API key.
@@ -47,27 +62,37 @@ class CommonVoiceV26Adapter(DatasetAdapter):
     """
 
     def fetch(self) -> Path:
-        roots: list[tuple[SourceSpec, Path]] = []
-        for index, (source, archive) in enumerate(
-            zip(self.config.sources, self._download_remote_archives(), strict=True)
-        ):
-            destination = (self.extracted_dir / f"source-{index:03d}").resolve()
+        archives = self._download_remote_archives()
+        if self._is_bundle():
+            members = {
+                f"{self.config.release}-{_ARCHIVE_LOCALES.get(locale, locale)}.tar.gz": (
+                    f"source-{index:03d}"
+                )
+                for index, locale in enumerate(_SOURCE_LOCALES)
+            }
             try:
-                dataset_io.safe_extract_tar(archive, destination)
+                dataset_io.safe_extract_nested_tars(archives[0], self.extracted_dir, members)
             except tarfile.TarError as error:
                 raise ValueError(
-                    f"Common Voice source {source.name!r} is not a readable tar archive: {archive}"
+                    f"Common Voice bundle is not a readable nested archive: {archives[0]}"
                 ) from error
-            roots.append((source, destination))
-        self._corpora(roots)
+        else:
+            for index, (source, archive) in enumerate(
+                zip(self.config.sources, archives, strict=True)
+            ):
+                destination = (self.extracted_dir / f"source-{index:03d}").resolve()
+                try:
+                    dataset_io.safe_extract_tar(archive, destination)
+                except tarfile.TarError as error:
+                    raise ValueError(
+                        f"Common Voice source {source.name!r} is not a readable tar archive: "
+                        f"{archive}"
+                    ) from error
+        self._corpora(self._roots())
         return self.extracted_dir
 
     def inventory(self) -> list[InventoryItem]:
-        roots = [
-            (source, (self.extracted_dir / f"source-{index:03d}").resolve())
-            for index, source in enumerate(self.config.sources)
-        ]
-        corpora = self._corpora(roots)
+        corpora = self._corpora(self._roots())
         records: list[InventoryItem] = []
         source_ids: dict[str, Path] = {}
 
@@ -156,11 +181,9 @@ class CommonVoiceV26Adapter(DatasetAdapter):
     def _download_remote_archives(self) -> list[Path]:
         api_key = os.environ.get(_MDC_API_KEY_ENV)
 
-        def download(entry: tuple[int, SourceSpec]) -> Path:
-            index, source = entry
-            dataset_id = _mdc_dataset_id(source)
-            api_url = f"{_MDC_API_BASE}/datasets/{dataset_id}/download"
-            destination = self._download_path(index)
+        def download(source: SourceSpec) -> Path:
+            api_url = f"{_MDC_API_BASE}/datasets/{_mdc_dataset_id(source)}/download"
+            destination = self._download_path(source)
             cached_checksum = dataset_io.cached_download_checksum(
                 destination,
                 state_url=api_url,
@@ -172,7 +195,11 @@ class CommonVoiceV26Adapter(DatasetAdapter):
                     "Common Voice downloads require MDC_API_KEY; create an API key in "
                     "Mozilla Data Collective after accepting each dataset's terms"
                 )
-            download_url, download_checksum = _request_download_session(source, api_url, api_key)
+            download_url, download_checksum = _request_download_session(
+                source,
+                api_url,
+                api_key,
+            )
             return dataset_io.download_file(
                 download_url,
                 destination,
@@ -180,7 +207,7 @@ class CommonVoiceV26Adapter(DatasetAdapter):
                 state_url=api_url,
             )
 
-        sources = list(enumerate(self.config.sources))
+        sources = self.config.sources
         workers = min(self.workers, len(sources))
         with ThreadPoolExecutor(
             max_workers=workers,
@@ -188,12 +215,35 @@ class CommonVoiceV26Adapter(DatasetAdapter):
         ) as executor:
             return list(executor.map(download, sources))
 
-    def _download_path(self, index: int) -> Path:
-        return (self.download_dir / f"source-{index:03d}.tar.gz").resolve()
+    def _download_path(self, source: SourceSpec) -> Path:
+        return (self.download_dir / f"{source.name}.tar.gz").resolve()
 
-    def _corpora(self, roots: list[tuple[SourceSpec, Path]]) -> list[_Corpus]:
+    def _is_bundle(self) -> bool:
+        return len(self.config.sources) == 1 and self.config.sources[0].name == "bundle"
+
+    def _roots(self) -> list[tuple[str, Path]]:
+        locales = (
+            _SOURCE_LOCALES
+            if self._is_bundle()
+            else tuple(source.name for source in self.config.sources)
+        )
+        if set(locales) != set(_SOURCE_LOCALES) or len(locales) != len(_SOURCE_LOCALES):
+            raise ValueError("Common Voice configuration must provide the 13 LRAC locales")
+        return [
+            (locale, (self.extracted_dir / f"source-{index:03d}").resolve())
+            for index, locale in enumerate(locales)
+        ]
+
+    def provenance_artifacts(self) -> tuple[Path, ...]:
+        return tuple(
+            archive
+            for source in self.config.sources
+            if (archive := self._download_path(source)).is_file()
+        )
+
+    def _corpora(self, roots: list[tuple[str, Path]]) -> list[_Corpus]:
         corpora: list[_Corpus] = []
-        for source, root in roots:
+        for source_locale, root in roots:
             resolved_root = root.resolve()
             matches = sorted(
                 resolved_root.rglob("validated.tsv"),
@@ -201,17 +251,17 @@ class CommonVoiceV26Adapter(DatasetAdapter):
             )
             if len(matches) != 1:
                 raise FileNotFoundError(
-                    f"Common Voice source {source.name!r} expected one validated.tsv under "
+                    f"Common Voice source {source_locale!r} expected one validated.tsv under "
                     f"{resolved_root}, found {len(matches)}"
                 )
 
             locale_root = matches[0].resolve().parent
             archive_locale = locale_root.name
-            expected_locale = _ARCHIVE_LOCALES.get(source.name, source.name)
+            expected_locale = _ARCHIVE_LOCALES.get(source_locale, source_locale)
             _validate_identifier(expected_locale, "archive locale")
             if archive_locale != expected_locale:
                 raise ValueError(
-                    f"Common Voice source {source.name!r} expected archive locale "
+                    f"Common Voice source {source_locale!r} expected archive locale "
                     f"{expected_locale!r}, found {archive_locale!r}"
                 )
 
@@ -231,7 +281,7 @@ class CommonVoiceV26Adapter(DatasetAdapter):
                     metadata_tables=tables,
                     clips_root=clips_root,
                     archive_locale=archive_locale,
-                    source_locale=source.name,
+                    source_locale=source_locale,
                 )
             )
 
@@ -273,9 +323,11 @@ def _request_download_session(
     try:
         response.raise_for_status()
     except httpx.HTTPStatusError as error:
-        raise RuntimeError(
-            f"Common Voice source {source.name!r}: MDC download request failed"
-        ) from error
+        status = error.response.status_code
+        message = (
+            f"Common Voice source {source.name!r}: MDC download request failed (HTTP {status})"
+        )
+        raise RuntimeError(message) from error
 
     try:
         payload = response.json()

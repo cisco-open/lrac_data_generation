@@ -1,0 +1,35 @@
+id: commonvoice
+release: "cv-corpus-27.0-2026-09-11"
+license: "CC0-1.0"
+media_kinds: [speech]
+
+# Mozilla Data Collective exposes authenticated release archives after one-time
+# terms acceptance. The adapter uses MDC_API_KEY to obtain temporary URLs and
+# publisher checksums.
+sources:
+  - name: ar
+    url: https://mozilladatacollective.com/datasets/cmu5wom3z00ceo107guxtg4xa
+  - name: de
+    url: https://mozilladatacollective.com/datasets/cmu5ktqhe00pgmh07p1xamabd
+  - name: es
+    url: https://mozilladatacollective.com/datasets/cmu5kitx700pemi073feoiqqu
+  - name: fa
+    url: https://mozilladatacollective.com/datasets/cmu5xazgy00finq074vaqo1b3
+  - name: fr
+    url: https://mozilladatacollective.com/datasets/cmu5kub4600pkmh078n7n5ogl
+  - name: it
+    url: https://mozilladatacollective.com/datasets/cmu5xagm300dyo1075qdhf20m
+  - name: ja
+    url: https://mozilladatacollective.com/datasets/cmu5xbhnf00fmnq07z9p3aa70
+  - name: pt
+    url: https://mozilladatacollective.com/datasets/cmu5wui2w00e8nq07idithpm6
+  - name: ru
+    url: https://mozilladatacollective.com/datasets/cmu5x45pn00dao107j4o9w2yv
+  - name: sw
+    url: https://mozilladatacollective.com/datasets/cmu5sgles002zo1071nphgtby
+  - name: zh
+    url: https://mozilladatacollective.com/datasets/cmu5lcunh00qimh078sdd5so8
+  - name: zh-HK
+    url: https://mozilladatacollective.com/datasets/cmu5wp2bp00dgnq07ylmgbnrz
+  - name: zh-TW
+    url: https://mozilladatacollective.com/datasets/cmu5wkw5i00c6o107jnm3t51u

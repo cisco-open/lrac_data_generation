@@ -22,7 +22,7 @@ public_evaluation:
   test_conditions: [clean, realworld, simultaneous_talkers]
 
 datasets:
-  - commonvoice_v26
+  - commonvoice
   - dns5
   - ears
   - fma
@@ -40,9 +40,9 @@ exclusion_files:
   - metadata/editions/2026/validation/exclusions.csv
 
 curation_files:
-  - dataset: commonvoice_v26
+  - dataset: commonvoice
     media_kind: speech
-    path: metadata/editions/2026/curation/commonvoice_v26_speech.csv
+    path: metadata/editions/2026/curation/commonvoice_speech.csv
   - dataset: dns5
     media_kind: speech
     path: metadata/editions/2026/curation/dns5_speech.csv

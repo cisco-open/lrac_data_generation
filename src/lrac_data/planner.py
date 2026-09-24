@@ -87,9 +87,9 @@ def collect_preparation_readiness(
                 f"unknown dataset {dataset.id!r}; available: {', '.join(sorted(ADAPTERS))}"
             )
         remote_commonvoice = [
-            (index, source)
-            for index, source in enumerate(dataset.sources)
-            if dataset.id == "commonvoice_v26" and source.path is None
+            source
+            for source in dataset.sources
+            if dataset.id == "commonvoice" and source.path is None
         ]
         if remote_commonvoice:
             commonvoice_sources = True
@@ -101,7 +101,7 @@ def collect_preparation_readiness(
         for source in dataset.sources:
             if source.path is not None:
                 local_path = source.path
-                if dataset.id == "commonvoice_v26" and not local_path.is_file():
+                if dataset.id == "commonvoice" and not local_path.is_file():
                     unresolved.append(
                         f"{dataset.id}/{source.name}: bound archive does not exist or "
                         f"is not a file: {local_path}"
@@ -165,6 +165,7 @@ def build_plan(
     selection: SelectionMode | str = SelectionMode.CURATED,
     repo_root: Path | None = None,
     check_remote: bool = False,
+    commonvoice_release: str = "27",
 ) -> PlanReport:
     """Resolve and validate an edition without writing or downloading anything."""
 
@@ -173,6 +174,7 @@ def build_plan(
         edition,
         repo_root=repo_root,
         selection=mode,
+        commonvoice_release=commonvoice_release,
     )
     config = loaded.config
 
@@ -251,7 +253,7 @@ def _check_remotes(loaded: LoadedEdition) -> tuple[RemoteCheck, ...]:
     requests: list[tuple[str, str, str]] = []
     for dataset in loaded.config.datasets:
         for source in dataset.sources:
-            if source.url is None or dataset.id == "commonvoice_v26":
+            if source.url is None or dataset.id == "commonvoice":
                 continue
             artifact_name, check_url = _remote_artifact(source)
             requests.append((dataset.id, artifact_name, check_url))
@@ -307,15 +309,15 @@ def _check_remotes(loaded: LoadedEdition) -> tuple[RemoteCheck, ...]:
 
 def _commonvoice_archives_cached(
     dataset: DatasetConfig,
-    sources: list[tuple[int, SourceSpec]],
+    sources: list[SourceSpec],
     workspace: Path,
 ) -> bool:
     download_dir = workspace.expanduser().resolve() / "downloads" / dataset.id
-    for index, source in sources:
+    for source in sources:
         parsed = urlsplit(source.url or "")
         dataset_id = parsed.path.rstrip("/").rsplit("/", 1)[-1]
         api_url = f"https://mozilladatacollective.com/api/datasets/{dataset_id}/download"
-        archive = download_dir / f"source-{index:03d}.tar.gz"
+        archive = download_dir / f"{source.name}.tar.gz"
         if cached_download_checksum(archive, state_url=api_url) is None:
             return False
     return True

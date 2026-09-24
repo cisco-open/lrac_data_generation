@@ -14,7 +14,7 @@ from pathlib import Path
 from lrac_data.models import DatasetConfig
 
 from .base import DatasetAdapter
-from .commonvoice_v26 import CommonVoiceV26Adapter
+from .commonvoice import CommonVoiceAdapter
 from .dns5 import DNS5Adapter
 from .ears import EARSAdapter
 from .fma import FMAAdapter
@@ -28,7 +28,7 @@ from .vctk import VCTKAdapter
 from .wham import WHAMAdapter
 
 ADAPTERS: dict[str, type[DatasetAdapter]] = {
-    "commonvoice_v26": CommonVoiceV26Adapter,
+    "commonvoice": CommonVoiceAdapter,
     "dns5": DNS5Adapter,
     "ears": EARSAdapter,
     "fma": FMAAdapter,

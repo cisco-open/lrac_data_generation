@@ -22,6 +22,7 @@ def plan(
     *,
     edition: str,
     selection: SelectionMode,
+    commonvoice_release: str,
     check_remote: bool,
     repo_root: Path | None,
 ) -> int:
@@ -30,6 +31,7 @@ def plan(
     report = build_plan(
         edition,
         selection=selection,
+        commonvoice_release=commonvoice_release,
         repo_root=repo_root,
         check_remote=check_remote,
     )
@@ -83,6 +85,7 @@ def prepare(
     workspace: Path,
     output: Path,
     selection: SelectionMode,
+    commonvoice_release: str,
     workers: int,
     repo_root: Path | None,
     low_storage: bool = False,
@@ -92,6 +95,7 @@ def prepare(
     result = prepare_edition(
         edition,
         selection=selection,
+        commonvoice_release=commonvoice_release,
         workspace=workspace,
         output=output,
         repo_root=repo_root,
@@ -204,6 +208,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Training selection (default: curated)",
     )
     plan_parser.add_argument(
+        "--commonvoice-release",
+        choices=("27", "26"),
+        default="27",
+        help="Common Voice release (default: 27)",
+    )
+    plan_parser.add_argument(
         "--check-remote",
         action="store_true",
         help="Perform header-only source URL checks",
@@ -225,6 +235,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=SelectionMode.CURATED,
         metavar="{curated,uncurated}",
         help="Training selection (default: curated)",
+    )
+    prepare_parser.add_argument(
+        "--commonvoice-release",
+        choices=("27", "26"),
+        default="27",
+        help="Common Voice release (default: 27)",
     )
     prepare_parser.add_argument(
         "--workers",
@@ -287,6 +303,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return plan(
             edition=arguments.edition,
             selection=arguments.selection,
+            commonvoice_release=arguments.commonvoice_release,
             check_remote=arguments.check_remote,
             repo_root=arguments.repo_root,
         )
@@ -296,6 +313,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             workspace=arguments.workspace,
             output=arguments.output,
             selection=arguments.selection,
+            commonvoice_release=arguments.commonvoice_release,
             workers=arguments.workers,
             low_storage=arguments.low_storage,
             repo_root=arguments.repo_root,

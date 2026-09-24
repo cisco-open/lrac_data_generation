@@ -75,6 +75,7 @@ def load_edition_config(
     *,
     repo_root: Path | None = None,
     selection: SelectionMode | str | None = None,
+    commonvoice_release: str = "27",
 ) -> LoadedEdition:
     """Load an edition and all referenced dataset YAML files.
 
@@ -93,9 +94,18 @@ def load_edition_config(
     raw_datasets = raw_edition.get("datasets")
     if not isinstance(raw_datasets, list):
         raise ConfigError(f"{edition_path}: 'datasets' must be a YAML list")
+    if commonvoice_release not in {"26", "27"}:
+        raise ConfigError("Common Voice release must be '26' or '27'")
 
     datasets = tuple(
-        _load_dataset_reference(reference, root, edition_path) for reference in raw_datasets
+        _load_dataset_reference(
+            "commonvoice_v26"
+            if reference == "commonvoice" and commonvoice_release == "26"
+            else reference,
+            root,
+            edition_path,
+        )
+        for reference in raw_datasets
     )
     resolved = dict(raw_edition)
     resolved["datasets"] = datasets

@@ -156,6 +156,7 @@ def prepare_edition(
     edition: str | Path,
     *,
     selection: SelectionMode | str = SelectionMode.CURATED,
+    commonvoice_release: str = "27",
     workspace: Path,
     output: Path,
     repo_root: Path | None = None,
@@ -168,7 +169,12 @@ def prepare_edition(
     if workers < 1:
         raise ValueError("workers must be positive")
     mode = SelectionMode(selection)
-    loaded = load_edition_config(edition, repo_root=repo_root, selection=mode)
+    loaded = load_edition_config(
+        edition,
+        repo_root=repo_root,
+        selection=mode,
+        commonvoice_release=commonvoice_release,
+    )
     layout = WorkspaceLayout.at(workspace)
     _require_preparation_requirements(loaded, layout.root)
     layout.create()
